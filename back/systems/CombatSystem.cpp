@@ -34,6 +34,21 @@ int CombatSystem::calculateStatDifference(float attackerStat, float defenderStat
 }
 
 int CombatSystem::executeAttack(Entity& attacker, Entity& defender) {
+    // Determine endurance cost based on attacker weight
+    float cost = 10.0f; // default medium
+    if (attacker.weight == Weight::Leger) {
+        cost = 7.5f; // faible
+    } else if (attacker.weight == Weight::Moyen) {
+        cost = 10.0f; // moyen
+    } else {
+        cost = 12.5f; // fort / tres fort
+    }
+
+    attacker.physicalReserve -= cost;
+    if (attacker.physicalReserve < 0) {
+        attacker.physicalReserve = 0;
+    }
+
     // Determine which character has the lowest stat involved (Force vs Resistance)
     // and use their level as reference for the calculation
     int refLevel = (attacker.force < defender.resistance) ? attacker.stade : defender.stade;
