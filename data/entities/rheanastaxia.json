@@ -1,10 +1,11 @@
 {
     "name": "Rhéanastaxia Nix",
+    "rank": "E",
     "stade": 10,
     "force": 25.25,
-    "resistance": 21.00,
+    "resistance": 21.0,
     "vitesse": 28.25,
-    "forceMagique": 10.00,
-    "resistanceMagique": 18.50,
+    "forceMagique": 10.0,
+    "resistanceMagique": 18.5,
     "weight": "Lourd"
 }

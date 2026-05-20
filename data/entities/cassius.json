@@ -1,10 +1,11 @@
 {
     "name": "Cassius Di Serranoctis",
     "stade": 7,
-    "force": 18.50,
+    "force": 18.5,
     "resistance": 14.25,
-    "vitesse": 20.00,
-    "forceMagique": 10.00,
+    "vitesse": 20.0,
+    "forceMagique": 10.0,
     "resistanceMagique": 13.25,
-    "weight": "Moyen"
+    "weight": "Moyen",
+    "rank": "F"
 }

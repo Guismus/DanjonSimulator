@@ -1,7 +1,7 @@
 {
     "name": "Goblin",
     "level": 2,
-    "rank": 1,
+    "rank": "F",
     "force": 4,
     "resistance": 2,
     "vitesse": 6,

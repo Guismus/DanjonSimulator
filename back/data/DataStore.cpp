@@ -83,7 +83,25 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 std::string name = j.value("name", "Unknown");
                 Entity entity(name);
                 entity.stade = j.value("stade", j.value("level", 1));
-                entity.rank = j.value("rank", 1);
+                
+                int rankVal = 1;
+                if (j.contains("rank")) {
+                    if (j["rank"].is_string()) {
+                        std::string rStr = j["rank"].get<std::string>();
+                        if (rStr == "None") rankVal = 0;
+                        else if (rStr == "F") rankVal = 1;
+                        else if (rStr == "E") rankVal = 2;
+                        else if (rStr == "D") rankVal = 3;
+                        else if (rStr == "C") rankVal = 4;
+                        else if (rStr == "B") rankVal = 5;
+                        else if (rStr == "A") rankVal = 6;
+                        else if (rStr == "S") rankVal = 7;
+                    } else if (j["rank"].is_number()) {
+                        rankVal = j["rank"].get<int>();
+                    }
+                }
+                entity.rank = rankVal;
+                
                 entity.force = j.value("force", 0.0f);
                 entity.resistance = j.value("resistance", 0.0f);
                 entity.vitesse = j.value("vitesse", 0.0f);

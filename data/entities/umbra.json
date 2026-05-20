@@ -4,7 +4,8 @@
     "force": 9.25,
     "resistance": 8.25,
     "vitesse": 10.25,
-    "forceMagique": 10.00,
-    "resistanceMagique": 8.00,
-    "weight": "Leger"
+    "forceMagique": 10.0,
+    "resistanceMagique": 8.0,
+    "weight": "Leger",
+    "rank": "F"
 }
