@@ -1,16 +1,18 @@
-#include <print>
-#include <filesystem>
-#include <thread>
-#include "back/core/Simulator.hpp"
+#include <QApplication>
+#include "front/include/MainWindow.hpp"
+#include "back/data/DataStore.hpp"
+#include <iostream>
 
 int main(int argc, char* argv[]) {
-    std::println("--- Danjon Simulator v1.0.0 (C++26) ---");
+    QApplication app(argc, argv);
+    std::cout << "--- Danjon Simulator v1.0.0 (C++26) ---" << std::endl;
 
-    Simulator* sim = new Simulator();
-    while (true) {
-        std::println("Running main loop...");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    delete sim;
-    return 0;
+    DataStore::getInstance().loadSystemData("data/diff_stats.json");
+    DataStore::getInstance().loadEntities("data/entities");
+
+    MainWindow window;
+    window.resize(1024, 768);
+    window.show();
+
+    return app.exec();
 }

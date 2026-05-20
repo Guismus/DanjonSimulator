@@ -1,0 +1,10 @@
+{
+    "name": "Siane Eclipse",
+    "stade": 6,
+    "force": 12.75,
+    "resistance": 16.50,
+    "vitesse": 14.00,
+    "forceMagique": 10.00,
+    "resistanceMagique": 18.50,
+    "weight": "Moyen"
+}

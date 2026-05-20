@@ -1,0 +1,10 @@
+{
+    "name": "Sorei Dezel",
+    "stade": 11,
+    "force": 20.25,
+    "resistance": 24.75,
+    "vitesse": 21.00,
+    "forceMagique": 10.00,
+    "resistanceMagique": 29.00,
+    "weight": "Moyen"
+}

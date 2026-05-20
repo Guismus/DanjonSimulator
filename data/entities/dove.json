@@ -1,0 +1,10 @@
+{
+    "name": "Dove Ault",
+    "stade": 1,
+    "force": 8.00,
+    "resistance": 9.75,
+    "vitesse": 8.25,
+    "forceMagique": 10.00,
+    "resistanceMagique": 10.25,
+    "weight": "Moyen"
+}

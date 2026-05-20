@@ -1,0 +1,11 @@
+{
+    "name": "Goblin",
+    "level": 2,
+    "rank": 1,
+    "force": 4,
+    "resistance": 2,
+    "vitesse": 6,
+    "forceMagique": 0,
+    "resistanceMagique": 1,
+    "weight": "Leger"
+}

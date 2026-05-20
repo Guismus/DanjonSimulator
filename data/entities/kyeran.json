@@ -1,0 +1,10 @@
+{
+    "name": "Kyeran Phantom",
+    "stade": 11,
+    "force": 20.75,
+    "resistance": 27.50,
+    "vitesse": 21.25,
+    "forceMagique": 10.00,
+    "resistanceMagique": 30.25,
+    "weight": "Moyen"
+}
