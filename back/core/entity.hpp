@@ -43,6 +43,15 @@ struct Catalyst {
     int power;
 };
 
+struct EnergyThresholds {
+    float maxReserve = 0;
+    float essouffle = -1;
+    float haletant = -1;
+    float epuise = -1;
+    float aBout = -1;
+    float inconscient = 0;
+};
+
 class Entity {
 public:
     Entity(const std::string& name);
@@ -60,6 +69,8 @@ public:
     // Derived & Resources
     float blood; // max 32
     float physicalReserve;
+    float maxPhysicalReserve;
+    EnergyThresholds physicalThresholds;
     float magicReserve;
 
     Weight weight;
@@ -76,6 +87,7 @@ public:
     void applyWound(int effectiveness);
     void applyBleeding(int severity);
     bool isDead() const;
+    std::string getPhysicalState() const;
     
     std::vector<int> wounds; // Tracks current wound stages
 

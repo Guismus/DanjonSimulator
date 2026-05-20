@@ -1,5 +1,5 @@
 #include "MagicStatusSystem.hpp"
-#include <iostream>
+#include <print>
 
 void StatusSystem::applyBleed(Entity& target, int severity) {
     // Bleed levels: 1 = Faible (-1), 2 = Moyen (-2), 3 = Fort (-5)
@@ -9,7 +9,7 @@ void StatusSystem::applyBleed(Entity& target, int severity) {
     else if (severity >= 3) damage = 5;
 
     target.applyBleeding(damage);
-    std::cout << target.getName() << " bleeds for " << damage << " points." << std::endl;
+    std::println("{} bleeds for {} points.", target.getName(), damage);
 }
 
 void StatusSystem::processTurnEnd(Entity& target) {
@@ -21,13 +21,13 @@ void MagicSystem::executeOffensiveMagic(Entity& caster, Entity& target) {
     if (caster.catalyst.has_value()) {
         magicPower += caster.catalyst.value().power;
     }
-    std::cout << caster.getName() << " casts offensive magic on " << target.getName() << " with power " << magicPower << "!" << std::endl;
+    std::println("{} casts offensive magic on {} with power {}!", caster.getName(), target.getName(), magicPower);
 }
 
 void MagicSystem::executeBoostMagic(Entity& caster, const std::string& statToBoost) {
-    std::cout << caster.getName() << " boosts " << statToBoost << "!" << std::endl;
+    std::println("{} boosts {}!", caster.getName(), statToBoost);
 }
 
 void MagicSystem::executeHealMagic(Entity& caster, Entity& target, int level) {
-    std::cout << caster.getName() << " heals " << target.getName() << " (Level " << level << ")!" << std::endl;
+    std::println("{} heals {} (Level {})!", caster.getName(), target.getName(), level);
 }

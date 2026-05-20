@@ -33,6 +33,38 @@ bool DataStore::loadSystemData(const std::string& filepath) {
     }
 }
 
+bool DataStore::loadEnergySystem(const std::string& filepath) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) return false;
+    try {
+        json j;
+        file >> j;
+        if (j.contains("reserves_energie_physique")) {
+            for (const auto& item : j["reserves_energie_physique"]) {
+                int rank = item["tier_physique"];
+                EnergyThresholds t;
+                t.maxReserve = item["max"];
+                t.essouffle = item["rapport"]["essouffle"];
+                t.haletant = item["rapport"]["haletant"];
+                t.epuise = item["rapport"]["epuise"];
+                t.aBout = item["rapport"]["a_bout"];
+                t.inconscient = item["rapport"]["inconscient"];
+                rankThresholds[rank] = t;
+            }
+        }
+        return true;
+    } catch (std::exception& e) {
+        std::cerr << "Failed to parse energy system: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+const EnergyThresholds* DataStore::getEnergyThresholds(int rank) const {
+    auto it = rankThresholds.find(rank);
+    if (it != rankThresholds.end()) return &it->second;
+    return nullptr;
+}
+
 bool DataStore::loadEntities(const std::string& directoryPath) {
     bool success = true;
     for (const auto& entry : fs::directory_iterator(directoryPath)) {
@@ -64,6 +96,12 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 else if (weightStr == "Surpoids") entity.weight = Weight::Surpoids;
                 else if (weightStr == "Effondrement") entity.weight = Weight::Effondrement;
                 else entity.weight = Weight::Moyen;
+
+                if (auto t = getEnergyThresholds(entity.rank)) {
+                    entity.physicalThresholds = *t;
+                    entity.maxPhysicalReserve = t->maxReserve;
+                    entity.physicalReserve = t->maxReserve; // Start at max
+                }
 
                 entityTemplates.emplace(name, entity);
             } catch (json::parse_error& e) {

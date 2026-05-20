@@ -156,7 +156,7 @@ void RunPage::startCombat() {
     selectionWidget->setVisible(false);
     combatWidget->setVisible(true);
     combatLog->clear();
-    combatLog->append("Le combat commence ! Tour de " + QString::fromStdString(fighter1->getName()));
+    combatLog->append("Le combat commence");
     
     updateCombatUI();
 }
@@ -175,10 +175,18 @@ void RunPage::updateCombatUI() {
         };
         
         p1NameLabel->setText(QString::fromStdString(fighter1->getName()));
-        p1HpLabel->setText("Blessures: " + formatWounds(fighter1->wounds));
+        if (fighter1) {
+            p1HpLabel->setText("Blessures : " + formatWounds(fighter1->wounds) + "\n" +
+                               "Endurance : " + QString::number(fighter1->physicalReserve) + " / " + QString::number(fighter1->maxPhysicalReserve) + 
+                               " (" + QString::fromStdString(fighter1->getPhysicalState()) + ")");
+        }
         
         p2NameLabel->setText(QString::fromStdString(fighter2->getName()));
-        p2HpLabel->setText("Blessures: " + formatWounds(fighter2->wounds));
+        if (fighter2) {
+            p2HpLabel->setText("Blessures : " + formatWounds(fighter2->wounds) + "\n" +
+                               "Endurance : " + QString::number(fighter2->physicalReserve) + " / " + QString::number(fighter2->maxPhysicalReserve) + 
+                               " (" + QString::fromStdString(fighter2->getPhysicalState()) + ")");
+        }
         
         // If someone is dead, disable both buttons
         if (fighter1->isDead() || fighter2->isDead()) {

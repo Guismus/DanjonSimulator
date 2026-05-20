@@ -1,0 +1,79 @@
+{
+  "reserves_energie_physique": [
+    {
+      "rank": "None",
+      "tier_physique": 0,
+      "max": 100,
+      "rapport": { "essouffle": 75, "haletant": 60, "epuise": 40, "a_bout": 20, "inconscient": 0 }
+    },
+    {
+      "rank": "F",
+      "tier_physique": 1,
+      "max": 150,
+      "rapport": { "essouffle": 105, "haletant": 83, "epuise": 53, "a_bout": 26, "inconscient": 0 }
+    },
+    {
+      "rank": "E",
+      "tier_physique": 2,
+      "max": 250,
+      "rapport": { "essouffle": 163, "haletant": 125, "epuise": 75, "a_bout": 38, "inconscient": 0 }
+    },
+    {
+      "rank": "D",
+      "tier_physique": 3,
+      "max": 400,
+      "rapport": { "essouffle": 240, "haletant": 180, "epuise": 108, "a_bout": 52, "inconscient": 0 }
+    },
+    {
+      "rank": "C",
+      "tier_physique": 4,
+      "max": 500,
+      "rapport": { "essouffle": -1, "haletant": -1, "epuise": -1, "a_bout": -1, "inconscient": 0 }
+    },
+    {
+      "rank": "B",
+      "tier_physique": 5,
+      "max": 600,
+      "rapport": { "essouffle": 250, "haletant": 175, "epuise": 115, "a_bout": 35, "inconscient": 0 }
+    },
+    {
+      "rank": "A",
+      "tier_physique": 6,
+      "max": 700,
+      "rapport": { "essouffle": 315, "haletant": 210, "epuise": 140, "a_bout": 35, "inconscient": 0 }
+    },
+    {
+      "rank": "S",
+      "tier_physique": 7,
+      "max": 800,
+      "rapport": { "essouffle": 320, "haletant": 200, "epuise": 136, "a_bout": 24, "inconscient": 0 }
+    }
+  ],
+  "cout_general": {
+    "tres_fort": 15,
+    "fort": 12.5,
+    "moyen": 10,
+    "faible": 7.5
+  },
+  "rapport_utilisation": {
+    "tres_faible": [],
+    "faible": [
+      "Arme légère",
+      "Pugilat [x0.95]",
+      "Parer",
+      "Arc [x1 For]"
+    ],
+    "moyen": [
+      "Esquive rapide (corps à corps)",
+      "Arme moyenne"
+    ],
+    "fort": [
+      "Déplacement (esquive lourde/aoe)",
+      "Arme lourde"
+    ],
+    "tres_fort": [
+      "Porter un objet lourd",
+      "Apnée"
+    ]
+  }
+}

@@ -4,7 +4,7 @@
 Entity::Entity(const std::string& name)
     : name(name), stade(1), rank(1),
       force(0.0f), resistance(0.0f), vitesse(0.0f), forceMagique(0.0f), resistanceMagique(0.0f),
-      blood(32.0f), physicalReserve(0.0f), magicReserve(0.0f),
+      blood(32.0f), physicalReserve(0.0f), maxPhysicalReserve(0.0f), magicReserve(0.0f),
       weight(Weight::Moyen) {
 }
 
@@ -32,4 +32,17 @@ void Entity::applyBleeding(int severity) {
 bool Entity::isDead() const {
     // Si on a une blessure de Stade 5 (ou plus), c'est la mort
     return !wounds.empty() && wounds.front() >= 5;
+}
+
+std::string Entity::getPhysicalState() const {
+    if (physicalThresholds.essouffle == -1) {
+        // Missing thresholds (e.g. Rank C)
+        return "Inconnu";
+    }
+    if (physicalReserve <= physicalThresholds.inconscient) return "Inconscient";
+    if (physicalReserve <= physicalThresholds.aBout) return "A bout";
+    if (physicalReserve <= physicalThresholds.epuise) return "Epuisé";
+    if (physicalReserve <= physicalThresholds.haletant) return "Haletant";
+    if (physicalReserve <= physicalThresholds.essouffle) return "Essoufflé";
+    return "En forme";
 }

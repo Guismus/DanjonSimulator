@@ -1,12 +1,12 @@
 #include <QApplication>
 #include "front/include/MainWindow.hpp"
 #include "back/data/DataStore.hpp"
-#include <iostream>
+#include <print>
 #include <QFile>
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
-    std::cout << "--- Danjon Simulator v1.0.0 (C++26) ---" << std::endl;
+    std::println("--- Danjon Simulator v1.0.0 (C++26) ---");
 
     QFile styleFile("front/resources/style.qss");
     if(styleFile.open(QFile::ReadOnly)) {
@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
     }
 
     DataStore::getInstance().loadSystemData("data/diff_stats.json");
+    DataStore::getInstance().loadEnergySystem("data/energy_system.json");
     DataStore::getInstance().loadEntities("data/entities");
 
     MainWindow window;
