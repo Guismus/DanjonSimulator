@@ -21,7 +21,7 @@ HistoryPage::HistoryPage(QWidget *parent) : QWidget(parent) {
 
 void HistoryPage::loadLogs() {
     logView->clear();
-    QDir logDir("../../logs");
+    QDir logDir("logs");
     if (!logDir.exists()) return;
     
     QStringList filters;

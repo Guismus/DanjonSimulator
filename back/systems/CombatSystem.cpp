@@ -33,22 +33,16 @@ int CombatSystem::calculateStatDifference(float attackerStat, float defenderStat
     return isNegative ? -effectiveness : effectiveness;
 }
 
-void CombatSystem::executeAttack(Entity& attacker, Entity& defender) {
+int CombatSystem::executeAttack(Entity& attacker, Entity& defender) {
     // Determine which character has the lowest stat involved (Force vs Resistance)
     // and use their level as reference for the calculation
     int refLevel = (attacker.force < defender.resistance) ? attacker.stade : defender.stade;
     
     int effectiveness = calculateStatDifference(attacker.force, defender.resistance, refLevel);
     
-    // According to the rules: Damage = cumulative diff stats. +5 accumulated = death.
-    // If effectiveness is > 0, it means the attacker successfully deals damage.
-    // Negative effectiveness could mean the attack is completely ineffective (0 damage).
-    int damageToApply = std::max(0, effectiveness);
+    // According to the rules: Damage is tracked in stages.
+    // Effectiveness < 0 means no wound. Effectiveness >= 0 adds a wound.
+    defender.applyWound(effectiveness);
     
-    defender.blood += damageToApply;
-    
-    // Death condition
-    if (defender.blood >= 5.0f) {
-        defender.blood = 5.0f; // Cap at 5 which means dead
-    }
+    return effectiveness;
 }

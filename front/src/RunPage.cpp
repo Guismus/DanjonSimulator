@@ -1,9 +1,29 @@
 #include "../include/RunPage.hpp"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QMessageBox>
 #include "../../back/data/DataStore.hpp"
 #include "../../back/systems/CombatSystem.hpp"
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
+#include <QDateTime>
+
+static QString getStageName(int eff) {
+    if (eff == 0) return "Neutre";
+    QString name;
+    switch (std::abs(eff)) {
+        case 1: name = "Faveur"; break;
+        case 2: name = "Avantage"; break;
+        case 3: name = "Efficace"; break;
+        case 4: name = "Surpuissance"; break;
+        case 5: name = "Domination"; break;
+        case 6: name = "Ecrasement"; break;
+        case 7: name = "Tyrannie"; break;
+        default: name = "Inconnu"; break;
+    }
+    if (eff < 0) return "Sous-" + name;
+    return name;
+}
 
 RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -57,7 +77,8 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     
     combatLayout->addLayout(fightersLayout);
     
-    combatLog = new QLabel("Combat Started!");
+    combatLog = new QTextEdit();
+    combatLog->setReadOnly(true);
     combatLayout->addWidget(combatLog);
     
     QPushButton* backButton = new QPushButton("Retour à la sélection");
@@ -75,10 +96,16 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     });
     
     connect(p1AttackBtn, &QPushButton::clicked, [this]() {
-        if (fighter1 && fighter2) performAttack(*fighter1, *fighter2);
+        p1Ready = true;
+        p1AttackBtn->setEnabled(false);
+        p1AttackBtn->setText("Prêt !");
+        if (p1Ready && p2Ready) resolveTurn();
     });
     connect(p2AttackBtn, &QPushButton::clicked, [this]() {
-        if (fighter1 && fighter2) performAttack(*fighter2, *fighter1);
+        p2Ready = true;
+        p2AttackBtn->setEnabled(false);
+        p2AttackBtn->setText("Prêt !");
+        if (p1Ready && p2Ready) resolveTurn();
     });
 
     loadEntities();
@@ -113,55 +140,115 @@ void RunPage::startCombat() {
     if (!opt1) { fighter1->force = 10.0f; fighter1->blood = 0.0f; fighter1->stade = 1; }
     if (!opt2) { fighter2->force = 8.0f; fighter2->blood = 0.0f; fighter2->stade = 1; }
     
-    // Reset damage (blood acts as 0 to 5 damage track)
-    fighter1->blood = 0.0f;
-    fighter2->blood = 0.0f;
+    // Reset damage (wounds vector)
+    fighter1->wounds.clear();
+    fighter2->wounds.clear();
     
-    // Set first turn to P1
+    p1Ready = false;
+    p2Ready = false;
+    
+    // Set both buttons ready
     p1AttackBtn->setEnabled(true);
-    p2AttackBtn->setEnabled(false);
+    p2AttackBtn->setEnabled(true);
+    p1AttackBtn->setText("Attaquer");
+    p2AttackBtn->setText("Attaquer");
 
     selectionWidget->setVisible(false);
     combatWidget->setVisible(true);
-    combatLog->setText("Le combat commence ! Tour de " + QString::fromStdString(fighter1->getName()));
+    combatLog->clear();
+    combatLog->append("Le combat commence ! Tour de " + QString::fromStdString(fighter1->getName()));
     
     updateCombatUI();
 }
 
 void RunPage::updateCombatUI() {
     if (fighter1 && fighter2) {
+        auto formatWounds = [](const std::vector<int>& w) {
+            if (w.empty()) return QString("Aucune");
+            QString res = "[";
+            for (size_t i = 0; i < w.size(); ++i) {
+                res += getStageName(w[i]);
+                if (i < w.size() - 1) res += ", ";
+            }
+            res += "]";
+            return res;
+        };
+        
         p1NameLabel->setText(QString::fromStdString(fighter1->getName()));
-        p1HpLabel->setText("Blessures: " + QString::number(fighter1->blood) + " / 5");
+        p1HpLabel->setText("Blessures: " + formatWounds(fighter1->wounds));
         
         p2NameLabel->setText(QString::fromStdString(fighter2->getName()));
-        p2HpLabel->setText("Blessures: " + QString::number(fighter2->blood) + " / 5");
+        p2HpLabel->setText("Blessures: " + formatWounds(fighter2->wounds));
         
         // If someone is dead, disable both buttons
-        if (fighter1->blood >= 5.0f || fighter2->blood >= 5.0f) {
+        if (fighter1->isDead() || fighter2->isDead()) {
             p1AttackBtn->setEnabled(false);
             p2AttackBtn->setEnabled(false);
         }
     }
 }
 
-void RunPage::performAttack(Entity& attacker, Entity& defender) {
-    float oldBlood = defender.blood;
-    CombatSystem::executeAttack(attacker, defender);
-    float damage = defender.blood - oldBlood;
-    
-    QString msg = QString::fromStdString(attacker.getName()) + " attaque " + QString::fromStdString(defender.getName()) + " !\n" 
-                + "Résultat : +" + QString::number(damage) + " Dégâts !";
-                
-    if (defender.blood >= 5.0f) {
-        msg += "\n" + QString::fromStdString(defender.getName()) + " est K.O !";
+void RunPage::resolveTurn() {
+    if (!fighter1 || !fighter2) return;
+
+    QString msg = "--- Résolution du Tour ---\n";
+
+    Entity* first = &(*fighter1);
+    Entity* second = &(*fighter2);
+
+    if (fighter2->vitesse > fighter1->vitesse) {
+        first = &(*fighter2);
+        second = &(*fighter1);
+    }
+
+    // First attacker hits
+    int eff1 = CombatSystem::executeAttack(*first, *second);
+    msg += QString::fromStdString(first->getName()) + " tape (Vit: " + QString::number(first->vitesse) + ") et inflige un " + getStageName(eff1);
+
+    if (second->isDead()) {
+        msg += "\n" + QString::fromStdString(second->getName()) + " est K.O !";
     } else {
-        // Toggle turns
-        bool isP1Attacking = (attacker.getName() == fighter1->getName());
-        p1AttackBtn->setEnabled(!isP1Attacking);
-        p2AttackBtn->setEnabled(isP1Attacking);
-        msg += "\nAu tour de " + QString::fromStdString(defender.getName()) + " de jouer.";
+        // Second attacker hits back
+        int eff2 = CombatSystem::executeAttack(*second, *first);
+        msg += "\n" + QString::fromStdString(second->getName()) + " tape (Vit: " + QString::number(second->vitesse) + ") et inflige un " + getStageName(eff2);
+
+        if (first->isDead()) {
+            msg += "\n" + QString::fromStdString(first->getName()) + " est K.O !";
+        }
+    }
+
+    combatLog->append(msg + "\n");
+
+    // Reset state
+    p1Ready = false;
+    p2Ready = false;
+    p1AttackBtn->setText("Attaquer");
+    p2AttackBtn->setText("Attaquer");
+    p1AttackBtn->setEnabled(true);
+    p2AttackBtn->setEnabled(true);
+    
+    updateCombatUI();
+
+    if (fighter1->isDead() || fighter2->isDead()) {
+        saveCombatLog();
+    }
+}
+
+void RunPage::saveCombatLog() {
+    QDir dir("logs");
+    if (!dir.exists()) {
+        dir.mkpath(".");
     }
     
-    combatLog->setText(msg);
-    updateCombatUI();
+    QString filename = "logs/Combat_" + 
+                       QString::fromStdString(fighter1->getName()).replace(" ", "_") + "_vs_" + 
+                       QString::fromStdString(fighter2->getName()).replace(" ", "_") + "_" + 
+                       QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss") + ".log";
+                       
+    QFile file(filename);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        out << combatLog->toPlainText();
+        file.close();
+    }
 }

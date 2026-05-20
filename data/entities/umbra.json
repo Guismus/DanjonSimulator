@@ -1,0 +1,10 @@
+{
+    "name": "Umbra Phantom",
+    "stade": 1,
+    "force": 9.25,
+    "resistance": 8.25,
+    "vitesse": 10.25,
+    "forceMagique": 10.00,
+    "resistanceMagique": 8.00,
+    "weight": "Leger"
+}

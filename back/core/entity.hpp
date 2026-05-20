@@ -73,9 +73,11 @@ public:
 
     // Methods
     const std::string& getName() const;
-    void applyDamage(int damage);
+    void applyWound(int effectiveness);
     void applyBleeding(int severity);
     bool isDead() const;
+    
+    std::vector<int> wounds; // Tracks current wound stages
 
 private:
     std::string name;

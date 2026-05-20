@@ -1,0 +1,10 @@
+{
+    "name": "Rhéanastaxia Nix",
+    "stade": 10,
+    "force": 25.25,
+    "resistance": 21.00,
+    "vitesse": 28.25,
+    "forceMagique": 10.00,
+    "resistanceMagique": 18.50,
+    "weight": "Lourd"
+}

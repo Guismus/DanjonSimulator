@@ -4,6 +4,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QTextEdit>
 #include <optional>
 #include "../../back/core/entity.hpp"
 
@@ -31,13 +32,17 @@ private:
     QLabel* p2HpLabel;
     QPushButton* p1AttackBtn;
     QPushButton* p2AttackBtn;
-    QLabel* combatLog;
+    QTextEdit* combatLog;
 
     std::optional<Entity> fighter1;
     std::optional<Entity> fighter2;
+    
+    bool p1Ready;
+    bool p2Ready;
 
     void loadEntities();
     void startCombat();
     void updateCombatUI();
-    void performAttack(Entity& attacker, Entity& defender);
+    void resolveTurn();
+    void saveCombatLog();
 };

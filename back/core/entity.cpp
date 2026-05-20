@@ -12,11 +12,16 @@ const std::string& Entity::getName() const {
     return name;
 }
 
-void Entity::applyDamage(int damage) {
-    // Combat system will handle damage stages, but we can store abstract damage if needed.
-    // In this system, damage seems to be represented as stages (-7 to +7). 
-    // +5 is dead.
-    // For now we just implement the basic structure.
+void Entity::applyWound(int eff) {
+    // Les blessures négatives sont également accumulées !
+    // Combiner les blessures identiques : 2 Stade X = Stade X+2
+    while (std::find(wounds.begin(), wounds.end(), eff) != wounds.end()) {
+        wounds.erase(std::find(wounds.begin(), wounds.end(), eff));
+        eff += 2;
+    }
+    
+    wounds.push_back(eff);
+    std::sort(wounds.begin(), wounds.end(), std::greater<int>()); // Keep largest first
 }
 
 void Entity::applyBleeding(int severity) {
@@ -25,5 +30,6 @@ void Entity::applyBleeding(int severity) {
 }
 
 bool Entity::isDead() const {
-    return blood == 0;
+    // Si on a une blessure de Stade 5 (ou plus), c'est la mort
+    return !wounds.empty() && wounds.front() >= 5;
 }
