@@ -89,17 +89,19 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender) {
         
         armor.durability = std::max(0, armor.durability - durabilityLoss);
         
-        if (armor.material == ArmorMaterial::Peau) {
-            if (effectiveness >= 0) {
-                effectiveness = static_cast<int>(effectiveness * 0.9f);
-            }
-        } else if (armor.material == ArmorMaterial::Mineral) {
-            if (attacker.getActiveDamageType() == PhysicalDamageType::Contondant) {
+        if (armor.durability > 0) {
+            if (armor.material == ArmorMaterial::Peau) {
                 if (effectiveness >= 0) {
                     effectiveness = static_cast<int>(effectiveness * 0.9f);
                 }
-            } else {
-                blocked = true;
+            } else if (armor.material == ArmorMaterial::Mineral) {
+                if (attacker.getActiveDamageType() == PhysicalDamageType::Contondant) {
+                    if (effectiveness >= 0) {
+                        effectiveness = static_cast<int>(effectiveness * 0.9f);
+                    }
+                } else {
+                    blocked = true;
+                }
             }
         }
     }
