@@ -14,7 +14,7 @@ const std::string& Entity::getName() const {
 
 void Entity::applyWound(int eff, PhysicalDamageType type) {
     // Les blessures négatives sont également accumulées !
-    // Combiner les blessures identiques : 2 Stade X = Stade X+2
+    // Combiner les blessures identiques : 2 Stade X = Stade X+1
     auto it = std::find_if(wounds.begin(), wounds.end(), [eff](const Wound& w) {
         return w.effectiveness == eff;
     });
@@ -24,7 +24,7 @@ void Entity::applyWound(int eff, PhysicalDamageType type) {
             type = PhysicalDamageType::Tranchant;
         }
         wounds.erase(it);
-        eff += 2;
+        eff += 1;
         it = std::find_if(wounds.begin(), wounds.end(), [eff](const Wound& w) {
             return w.effectiveness == eff;
         });
