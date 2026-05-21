@@ -5,13 +5,7 @@
 #include <vector>
 #include <optional>
 
-enum class Weight {
-    Leger,
-    Moyen,
-    Lourd,
-    Surpoids,
-    Effondrement
-};
+
 
 enum class WeaponType {
     Tranchant,
@@ -24,6 +18,12 @@ enum class PhysicalDamageType {
     Tranchant
 };
 
+enum class WeaponWeight {
+    Leger,
+    Moyen,
+    Lourd
+};
+
 enum class ArmorMaterial {
     Fibre,
     Peau,
@@ -33,6 +33,7 @@ enum class ArmorMaterial {
 struct Weapon {
     std::string name;
     WeaponType type;
+    WeaponWeight weight;
     int durability;
     int baseDamageMod;
 };
@@ -87,7 +88,6 @@ public:
     EnergyThresholds physicalThresholds;
     float magicReserve;
 
-    Weight weight;
     std::optional<std::string> characterClass;
 
     std::vector<std::string> passives;

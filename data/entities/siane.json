@@ -3,9 +3,8 @@
     "stade": 6,
     "force": 12.75,
     "resistance": 16.5,
-    "vitesse": 14.0,
-    "forceMagique": 10.0,
+    "vitesse": 14,
+    "forceMagique": 10,
     "resistanceMagique": 18.5,
-    "weight": "Moyen",
     "rank": "F"
 }

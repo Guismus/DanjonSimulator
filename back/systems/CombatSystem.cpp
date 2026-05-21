@@ -34,14 +34,17 @@ int CombatSystem::calculateStatDifference(float attackerStat, float defenderStat
 }
 
 int CombatSystem::executeAttack(Entity& attacker, Entity& defender) {
-    // Determine endurance cost based on attacker weight
-    float cost = 10.0f; // default medium
-    if (attacker.weight == Weight::Leger) {
-        cost = 7.5f; // faible
-    } else if (attacker.weight == Weight::Moyen) {
-        cost = 10.0f; // moyen
-    } else {
-        cost = 12.5f; // fort / tres fort
+    // Cost in endurance per attack (Pugilat by default = 7.5f)
+    float cost = 7.5f; 
+    
+    if (attacker.weapon.has_value()) {
+        if (attacker.weapon->weight == WeaponWeight::Leger) {
+            cost = 7.5f;
+        } else if (attacker.weapon->weight == WeaponWeight::Moyen) {
+            cost = 10.0f;
+        } else if (attacker.weapon->weight == WeaponWeight::Lourd) {
+            cost = 12.5f;
+        }
     }
 
     attacker.physicalReserve -= cost;

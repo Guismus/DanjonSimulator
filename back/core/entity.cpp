@@ -5,7 +5,7 @@ Entity::Entity(const std::string& name)
     : name(name), stade(1), rank(1),
       force(0.0f), resistance(0.0f), vitesse(0.0f), forceMagique(0.0f), resistanceMagique(0.0f),
       blood(32.0f), physicalReserve(0.0f), maxPhysicalReserve(0.0f), magicReserve(0.0f),
-      weight(Weight::Moyen), physicalDamageType(PhysicalDamageType::Neutre) {
+      physicalDamageType(PhysicalDamageType::Neutre) {
 }
 
 const std::string& Entity::getName() const {
@@ -43,7 +43,7 @@ void Entity::applyBleeding(int severity) {
 
 bool Entity::isDead() const {
     // Si on a une blessure de Stade 5 (ou plus), ou si la réserve de sang est à 0, c'est la mort
-    return (!wounds.empty() && wounds.front().effectiveness >= 5) || (blood <= 0);
+    return (!wounds.empty() && wounds.front().effectiveness >= 5) || (blood <= 0) || (physicalReserve <= 0);
 }
 
 std::string Entity::getPhysicalState() const {

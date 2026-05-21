@@ -1,0 +1,11 @@
+{
+    "name": "Loup des bois",
+    "stade": 2,
+    "force": 8.75,
+    "resistance": 7.75,
+    "vitesse": 8.75,
+    "forceMagique": 5.5,
+    "resistanceMagique": 7.25,
+    "rank": "F",
+    "physicalDamageType": "Tranchant"
+}

@@ -1,12 +1,11 @@
 {
     "name": "Golem de minerais",
     "stade": 5,
-    "force": 13.0,
-    "resistance": 13.0,
+    "force": 13,
+    "resistance": 13,
     "vitesse": 10.25,
     "forceMagique": 6.5,
-    "resistanceMagique": 15.0,
-    "weight": "Lourd",
+    "resistanceMagique": 15,
     "rank": "F",
     "physicalDamageType": "Contondant"
 }

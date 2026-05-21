@@ -39,6 +39,7 @@ private:
     
     bool p1Ready;
     bool p2Ready;
+    int currentTurn = 1;
 
     void loadEntities();
     void startCombat();

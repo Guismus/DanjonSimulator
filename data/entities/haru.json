@@ -1,12 +1,11 @@
 {
     "name": "Haru Dahrendorf",
     "stade": 10,
-    "force": 24.0,
+    "force": 24,
     "resistance": 18.25,
     "vitesse": 26.25,
-    "forceMagique": 10.0,
-    "resistanceMagique": 19.0,
-    "weight": "Leger",
+    "forceMagique": 10,
+    "resistanceMagique": 19,
     "rank": "E",
     "equipement": {
         "armure": {

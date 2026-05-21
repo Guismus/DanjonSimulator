@@ -1,11 +1,10 @@
 {
     "name": "Finn Yugsig",
     "stade": 5,
-    "force": 12.0,
+    "force": 12,
     "resistance": 15.75,
-    "vitesse": 12.0,
-    "forceMagique": 10.0,
+    "vitesse": 12,
+    "forceMagique": 10,
     "resistanceMagique": 16.25,
-    "weight": "Moyen",
     "rank": "F"
 }

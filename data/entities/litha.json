@@ -1,11 +1,10 @@
 {
     "name": "Litha Zara-Reem",
     "stade": 7,
-    "force": 14.0,
-    "resistance": 18.0,
+    "force": 14,
+    "resistance": 18,
     "vitesse": 14.5,
-    "forceMagique": 10.0,
+    "forceMagique": 10,
     "resistanceMagique": 20.5,
-    "weight": "Moyen",
     "rank": "F"
 }

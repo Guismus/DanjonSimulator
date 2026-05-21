@@ -6,6 +6,5 @@
     "resistance": 2,
     "vitesse": 6,
     "forceMagique": 0,
-    "resistanceMagique": 1,
-    "weight": "Leger"
+    "resistanceMagique": 1
 }

@@ -156,6 +156,7 @@ void RunPage::startCombat() {
     
     p1Ready = false;
     p2Ready = false;
+    currentTurn = 1;
     
     // Set both buttons ready
     p1AttackBtn->setEnabled(true);
@@ -244,7 +245,7 @@ void RunPage::updateCombatUI() {
 void RunPage::resolveTurn() {
     if (!fighter1 || !fighter2) return;
 
-    QString msg = "--- Résolution du Tour ---\n";
+    QString msg = "--- Résolution du Tour " + QString::number(currentTurn) + " ---\n";
 
     Entity* first = &(*fighter1);
     Entity* second = &(*fighter2);
@@ -279,7 +280,11 @@ void RunPage::resolveTurn() {
     }
 
     if (second->isDead()) {
-        msg += "\n" + QString::fromStdString(second->getName()) + " est K.O !";
+        if (second->physicalReserve <= 0) {
+            msg += "\n" + QString::fromStdString(second->getName()) + " s'effondre de fatigue (K.O) !";
+        } else {
+            msg += "\n" + QString::fromStdString(second->getName()) + " est K.O !";
+        }
     } else {
         // Second attacker hits back
         std::optional<int> preArmorDurability2;
@@ -306,7 +311,11 @@ void RunPage::resolveTurn() {
         }
 
         if (first->isDead()) {
-            msg += "\n" + QString::fromStdString(first->getName()) + " est K.O !";
+            if (first->physicalReserve <= 0) {
+                msg += "\n" + QString::fromStdString(first->getName()) + " s'effondre de fatigue (K.O) !";
+            } else {
+                msg += "\n" + QString::fromStdString(first->getName()) + " est K.O !";
+            }
         }
     }
 
@@ -339,6 +348,8 @@ void RunPage::resolveTurn() {
     p2AttackBtn->setText("Attaquer");
     p1AttackBtn->setEnabled(true);
     p2AttackBtn->setEnabled(true);
+    
+    currentTurn++;
     
     updateCombatUI();
 

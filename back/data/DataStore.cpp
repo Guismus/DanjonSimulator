@@ -164,12 +164,7 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 entity.forceMagique = j.value("forceMagique", 0.0f);
                 entity.resistanceMagique = j.value("resistanceMagique", 0.0f);
                 
-                std::string weightStr = j.value("weight", "Moyen");
-                if (weightStr == "Leger") entity.weight = Weight::Leger;
-                else if (weightStr == "Lourd") entity.weight = Weight::Lourd;
-                else if (weightStr == "Surpoids") entity.weight = Weight::Surpoids;
-                else if (weightStr == "Effondrement") entity.weight = Weight::Effondrement;
-                else entity.weight = Weight::Moyen;
+
 
                 std::string dmgTypeStr = j.value("physicalDamageType", "Neutre");
                 if (dmgTypeStr == "Contondant") entity.physicalDamageType = PhysicalDamageType::Contondant;

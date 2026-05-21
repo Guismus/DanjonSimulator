@@ -4,8 +4,7 @@
     "stade": 11,
     "force": 20.25,
     "resistance": 24.75,
-    "vitesse": 21.0,
-    "forceMagique": 10.0,
-    "resistanceMagique": 29.0,
-    "weight": "Moyen"
+    "vitesse": 21,
+    "forceMagique": 10,
+    "resistanceMagique": 29
 }

@@ -4,10 +4,9 @@
     "rank": "E",
     "force": 26.75,
     "resistance": 24.75,
-    "vitesse": 23.0,
-    "forceMagique": 8.0,
-    "resistanceMagique": 23.0,
-    "weight": "Moyen",
+    "vitesse": 23,
+    "forceMagique": 8,
+    "resistanceMagique": 23,
     "physicalDamageType": "Tranchant",
     "passives": [
         "Camouflage réfléchissant",
