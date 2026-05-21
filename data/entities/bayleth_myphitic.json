@@ -1,0 +1,11 @@
+{
+    "name": "Bayleth Myphitic",
+    "stade": 10,
+    "force": 22.50,
+    "resistance": 19.50,
+    "vitesse": 17.25,
+    "forceMagique": 20.25,
+    "resistanceMagique": 19.00,
+    "rank": "E",
+    "physicalDamageType": "Neutre"
+}

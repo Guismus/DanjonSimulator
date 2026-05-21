@@ -1,0 +1,11 @@
+{
+    "name": "Agatha Eterm",
+    "stade": 10,
+    "force": 22.50,
+    "resistance": 19.75,
+    "vitesse": 17.25,
+    "forceMagique": 17.75,
+    "resistanceMagique": 19.25,
+    "rank": "E",
+    "physicalDamageType": "Neutre"
+}

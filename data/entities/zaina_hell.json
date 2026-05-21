@@ -1,0 +1,11 @@
+{
+    "name": "Zaïna Hell",
+    "stade": 5,
+    "force": 15.00,
+    "resistance": 11.75,
+    "vitesse": 12.50,
+    "forceMagique": 12.75,
+    "resistanceMagique": 11.00,
+    "rank": "F",
+    "physicalDamageType": "Neutre"
+}

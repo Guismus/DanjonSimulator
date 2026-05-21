@@ -33,7 +33,7 @@ int CombatSystem::calculateStatDifference(float attackerStat, float defenderStat
     return isNegative ? -effectiveness : effectiveness;
 }
 
-int CombatSystem::executeAttack(Entity& attacker, Entity& defender) {
+int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier) {
     // Cost in endurance per attack (Pugilat by default = 7.5f)
     float cost = 7.5f; 
     
@@ -46,6 +46,8 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender) {
             cost = 12.5f;
         }
     }
+
+    cost *= enduranceMultiplier;
 
     attacker.physicalReserve -= cost;
     if (attacker.physicalReserve < 0) {

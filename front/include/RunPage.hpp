@@ -31,14 +31,19 @@ private:
     QLabel* p2NameLabel;
     QLabel* p2HpLabel;
     QPushButton* p1AttackBtn;
+    QPushButton* p1CancelBtn;
     QPushButton* p2AttackBtn;
+    QPushButton* p2CancelBtn;
+    QPushButton* endTurnBtn;
     QTextEdit* combatLog;
 
     std::optional<Entity> fighter1;
     std::optional<Entity> fighter2;
     
-    bool p1Ready;
-    bool p2Ready;
+    int p1QueuedAttacks;
+    int p2QueuedAttacks;
+    int p1FreeActions;
+    int p2FreeActions;
     int currentTurn = 1;
 
     void loadEntities();

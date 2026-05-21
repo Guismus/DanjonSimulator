@@ -64,24 +64,36 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     p1NameLabel = new QLabel("P1");
     p1NameLabel->setStyleSheet("font-weight: bold; font-size: 16px;");
     p1HpLabel = new QLabel("HP: ");
-    p1AttackBtn = new QPushButton("Attaquer");
+    p1AttackBtn = new QPushButton("Préparer Attaque");
+    p1CancelBtn = new QPushButton("Annuler Action");
     f1Layout->addWidget(p1NameLabel);
     f1Layout->addWidget(p1HpLabel);
     f1Layout->addWidget(p1AttackBtn);
+    f1Layout->addWidget(p1CancelBtn);
     
     // Fighter 2 UI
     QVBoxLayout* f2Layout = new QVBoxLayout();
     p2NameLabel = new QLabel("P2");
     p2NameLabel->setStyleSheet("font-weight: bold; font-size: 16px;");
     p2HpLabel = new QLabel("HP: ");
-    p2AttackBtn = new QPushButton("Attaquer");
+    p2AttackBtn = new QPushButton("Préparer Attaque");
+    p2CancelBtn = new QPushButton("Annuler Action");
     f2Layout->addWidget(p2NameLabel);
     f2Layout->addWidget(p2HpLabel);
     f2Layout->addWidget(p2AttackBtn);
+    f2Layout->addWidget(p2CancelBtn);
     
     fightersLayout->addLayout(f1Layout);
     fightersLayout->addStretch();
-    fightersLayout->addWidget(new QLabel("VS"));
+    
+    QVBoxLayout* centerLayout = new QVBoxLayout();
+    QLabel* vsLabel = new QLabel("VS");
+    vsLabel->setAlignment(Qt::AlignCenter);
+    centerLayout->addWidget(vsLabel);
+    endTurnBtn = new QPushButton("Résoudre le Tour");
+    centerLayout->addWidget(endTurnBtn);
+    fightersLayout->addLayout(centerLayout);
+    
     fightersLayout->addStretch();
     fightersLayout->addLayout(f2Layout);
     
@@ -106,17 +118,22 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     });
     
     connect(p1AttackBtn, &QPushButton::clicked, [this]() {
-        p1Ready = true;
-        p1AttackBtn->setEnabled(false);
-        p1AttackBtn->setText("Prêt !");
-        if (p1Ready && p2Ready) resolveTurn();
+        p1QueuedAttacks++;
+        updateCombatUI();
+    });
+    connect(p1CancelBtn, &QPushButton::clicked, [this]() {
+        if (p1QueuedAttacks > 0) p1QueuedAttacks--;
+        updateCombatUI();
     });
     connect(p2AttackBtn, &QPushButton::clicked, [this]() {
-        p2Ready = true;
-        p2AttackBtn->setEnabled(false);
-        p2AttackBtn->setText("Prêt !");
-        if (p1Ready && p2Ready) resolveTurn();
+        p2QueuedAttacks++;
+        updateCombatUI();
     });
+    connect(p2CancelBtn, &QPushButton::clicked, [this]() {
+        if (p2QueuedAttacks > 0) p2QueuedAttacks--;
+        updateCombatUI();
+    });
+    connect(endTurnBtn, &QPushButton::clicked, this, &RunPage::resolveTurn);
 
     loadEntities();
 }
@@ -154,15 +171,22 @@ void RunPage::startCombat() {
     fighter1->wounds.clear();
     fighter2->wounds.clear();
     
-    p1Ready = false;
-    p2Ready = false;
+    p1QueuedAttacks = 0;
+    p2QueuedAttacks = 0;
+    
+    float v1 = fighter1->vitesse;
+    float v2 = fighter2->vitesse;
+    p1FreeActions = 2 + (v1 >= v2 && v2 > 0 ? static_cast<int>(v1 / v2) : 0);
+    p2FreeActions = 2 + (v2 >= v1 && v1 > 0 ? static_cast<int>(v2 / v1) : 0);
+
     currentTurn = 1;
     
-    // Set both buttons ready
+    // Set buttons ready
     p1AttackBtn->setEnabled(true);
     p2AttackBtn->setEnabled(true);
-    p1AttackBtn->setText("Attaquer");
-    p2AttackBtn->setText("Attaquer");
+    p1CancelBtn->setEnabled(false);
+    p2CancelBtn->setEnabled(false);
+    endTurnBtn->setEnabled(true);
 
     selectionWidget->setVisible(false);
     combatWidget->setVisible(true);
@@ -234,10 +258,36 @@ void RunPage::updateCombatUI() {
                                armorInfo);
         }
         
-        // If someone is dead, disable both buttons
         if (fighter1->isDead() || fighter2->isDead()) {
             p1AttackBtn->setEnabled(false);
+            p1CancelBtn->setEnabled(false);
             p2AttackBtn->setEnabled(false);
+            p2CancelBtn->setEnabled(false);
+            endTurnBtn->setEnabled(false);
+        } else {
+            endTurnBtn->setEnabled(p1QueuedAttacks > 0 || p2QueuedAttacks > 0);
+            p1AttackBtn->setEnabled(true);
+            p2AttackBtn->setEnabled(true);
+            p1CancelBtn->setEnabled(p1QueuedAttacks > 0);
+            p2CancelBtn->setEnabled(p2QueuedAttacks > 0);
+            
+            auto setBtnText = [](QPushButton* btn, int queued, int freeCount) {
+                float multipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
+                float nextMult = 1.0f;
+                if (queued >= freeCount) {
+                    int idx = queued - freeCount;
+                    if (idx > 5) idx = 5;
+                    nextMult = multipliers[idx];
+                }
+                
+                if (queued >= freeCount) {
+                    btn->setText("Préparer (Surcad. x" + QString::number(nextMult, 'f', 1) + ") [" + QString::number(queued) + " en file]");
+                } else {
+                    btn->setText("Préparer (" + QString::number(freeCount - queued) + " restants)");
+                }
+            };
+            setBtnText(p1AttackBtn, p1QueuedAttacks, p1FreeActions);
+            setBtnText(p2AttackBtn, p2QueuedAttacks, p2FreeActions);
         }
     }
 }
@@ -245,111 +295,105 @@ void RunPage::updateCombatUI() {
 void RunPage::resolveTurn() {
     if (!fighter1 || !fighter2) return;
 
-    QString msg = "--- Résolution du Tour " + QString::number(currentTurn) + " ---\n";
+    QString msg = "\n--- Résolution du Tour " + QString::number(currentTurn) + " ---";
+    combatLog->append(msg);
+    
+    auto applyAttack = [this](Entity* attacker, Entity* defender, int actionIndex, int freeActions) {
+        float multipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
+        float multiplier = 1.0f;
+        if (actionIndex >= freeActions) {
+            int idx = actionIndex - freeActions;
+            if (idx > 5) idx = 5;
+            multiplier = multipliers[idx];
+        }
+        
+        QString logMsg = QString::fromStdString(attacker->getName()) + " attaque (Action " + QString::number(actionIndex + 1) + ") : ";
+        if (multiplier > 1.0f) logMsg += "[Surcadençage x" + QString::number(multiplier, 'f', 1) + "] ";
+        
+        std::optional<int> preArmor;
+        if (defender->armor.has_value()) preArmor = defender->armor->durability;
+
+        int eff = CombatSystem::executeAttack(*attacker, *defender, multiplier);
+        logMsg += "inflige un " + getStageName(eff);
+        
+        if (defender->armor.has_value() && preArmor.has_value()) {
+            int currentDur = defender->armor->durability;
+            int diff = preArmor.value() - currentDur;
+            if (diff > 0) {
+                logMsg += QString("\n  [Armure] %1 subit -%2 de durabilité (%3/%4)")
+                          .arg(QString::fromStdString(defender->armor->name))
+                          .arg(diff).arg(currentDur).arg(defender->armor->maxDurability);
+                if (currentDur == 0 && preArmor.value() > 0) logMsg += QString("\n  [Armure] %1 est rompue !").arg(QString::fromStdString(defender->armor->name));
+            }
+        }
+
+        if (defender->isDead()) {
+            if (defender->physicalReserve <= 0) logMsg += "\n" + QString::fromStdString(defender->getName()) + " s'effondre de fatigue (K.O) !";
+            else logMsg += "\n" + QString::fromStdString(defender->getName()) + " est K.O !";
+        }
+        if (attacker->isDead() && attacker->physicalReserve <= 0) {
+            logMsg += "\n" + QString::fromStdString(attacker->getName()) + " s'effondre de fatigue suite à son effort (K.O) !";
+        }
+        combatLog->append(logMsg);
+    };
 
     Entity* first = &(*fighter1);
     Entity* second = &(*fighter2);
-
+    int firstQueued = p1QueuedAttacks;
+    int secondQueued = p2QueuedAttacks;
+    int firstFree = p1FreeActions;
+    int secondFree = p2FreeActions;
+    
     if (fighter2->vitesse > fighter1->vitesse) {
         first = &(*fighter2);
         second = &(*fighter1);
+        firstQueued = p2QueuedAttacks;
+        secondQueued = p1QueuedAttacks;
+        firstFree = p2FreeActions;
+        secondFree = p1FreeActions;
     }
 
-    // First attacker hits
-    std::optional<int> preArmorDurability1;
-    if (second->armor.has_value()) {
-        preArmorDurability1 = second->armor->durability;
-    }
+    int firstDone = 0;
+    int secondDone = 0;
 
-    int eff1 = CombatSystem::executeAttack(*first, *second);
-    msg += QString::fromStdString(first->getName()) + " tape [" + getDamageTypeName(first->getActiveDamageType()) + "] (Vit: " + QString::number(first->vitesse) + ") et inflige un " + getStageName(eff1);
-
-    if (second->armor.has_value() && preArmorDurability1.has_value()) {
-        int currentDur = second->armor->durability;
-        int diff = preArmorDurability1.value() - currentDur;
-        if (diff > 0) {
-            msg += QString("\n  [Armure] %1 subit -%2 de durabilité (%3/%4)")
-                   .arg(QString::fromStdString(second->armor->name))
-                   .arg(diff)
-                   .arg(currentDur)
-                   .arg(second->armor->maxDurability);
-            if (currentDur == 0 && preArmorDurability1.value() > 0) {
-                msg += QString("\n  [Armure] %1 est rompue !").arg(QString::fromStdString(second->armor->name));
-            }
+    while ((firstDone < firstQueued || secondDone < secondQueued) && !first->isDead() && !second->isDead()) {
+        if (firstDone < firstQueued) {
+            applyAttack(first, second, firstDone, firstFree);
+            firstDone++;
         }
-    }
-
-    if (second->isDead()) {
-        if (second->physicalReserve <= 0) {
-            msg += "\n" + QString::fromStdString(second->getName()) + " s'effondre de fatigue (K.O) !";
-        } else {
-            msg += "\n" + QString::fromStdString(second->getName()) + " est K.O !";
+        if (second->isDead() || first->isDead()) break;
+        
+        if (secondDone < secondQueued) {
+            applyAttack(second, first, secondDone, secondFree);
+            secondDone++;
         }
-    } else {
-        // Second attacker hits back
-        std::optional<int> preArmorDurability2;
-        if (first->armor.has_value()) {
-            preArmorDurability2 = first->armor->durability;
-        }
-
-        int eff2 = CombatSystem::executeAttack(*second, *first);
-        msg += "\n" + QString::fromStdString(second->getName()) + " tape [" + getDamageTypeName(second->getActiveDamageType()) + "] (Vit: " + QString::number(second->vitesse) + ") et inflige un " + getStageName(eff2);
-
-        if (first->armor.has_value() && preArmorDurability2.has_value()) {
-            int currentDur = first->armor->durability;
-            int diff = preArmorDurability2.value() - currentDur;
-            if (diff > 0) {
-                msg += QString("\n  [Armure] %1 subit -%2 de durabilité (%3/%4)")
-                       .arg(QString::fromStdString(first->armor->name))
-                       .arg(diff)
-                       .arg(currentDur)
-                       .arg(first->armor->maxDurability);
-                if (currentDur == 0 && preArmorDurability2.value() > 0) {
-                    msg += QString("\n  [Armure] %1 est rompue !").arg(QString::fromStdString(first->armor->name));
-                }
-            }
-        }
-
-        if (first->isDead()) {
-            if (first->physicalReserve <= 0) {
-                msg += "\n" + QString::fromStdString(first->getName()) + " s'effondre de fatigue (K.O) !";
-            } else {
-                msg += "\n" + QString::fromStdString(first->getName()) + " est K.O !";
-            }
-        }
+        if (first->isDead() || second->isDead()) break;
     }
 
     // Apply bleeding at turn end
-    msg += "\n\n--- Effets de Saignement ---";
+    QString bleedMsg = "\n--- Effets de Saignement ---";
     bool bleedingHappened = false;
-    for (Entity* entity : { first, second }) {
+    for (Entity* entity : { &(*fighter1), &(*fighter2) }) {
         if (!entity->isDead()) {
             int rate = entity->getBleedingRate();
             if (rate > 0) {
                 entity->applyBleeding(rate);
-                msg += "\n" + QString::fromStdString(entity->getName()) + " perd " + QString::number(rate) + " tic(s) de sang (Sang restant : " + QString::number(entity->blood, 'f', 1) + "/32.0).";
+                bleedMsg += "\n" + QString::fromStdString(entity->getName()) + " perd " + QString::number(rate) + " tic(s) de sang (Sang restant : " + QString::number(entity->blood, 'f', 1) + "/32.0).";
                 bleedingHappened = true;
                 if (entity->isDead()) {
-                    msg += "\n" + QString::fromStdString(entity->getName()) + " succombe à l'hémorragie (K.O) !";
+                    bleedMsg += "\n" + QString::fromStdString(entity->getName()) + " succombe à l'hémorragie (K.O) !";
                 }
             }
         }
     }
-    if (!bleedingHappened) {
-        msg += "\nAucun saignement actif.";
-    }
-
-    combatLog->append(msg + "\n");
-
-    // Reset state
-    p1Ready = false;
-    p2Ready = false;
-    p1AttackBtn->setText("Attaquer");
-    p2AttackBtn->setText("Attaquer");
-    p1AttackBtn->setEnabled(true);
-    p2AttackBtn->setEnabled(true);
+    if (!bleedingHappened) bleedMsg += "\nAucun saignement actif.";
+    combatLog->append(bleedMsg + "\n");
     
+    p1QueuedAttacks = 0;
+    p2QueuedAttacks = 0;
     currentTurn++;
+    
+    combatLog->append("--- Préparation du Tour " + QString::number(currentTurn) + " ---\n");
     
     updateCombatUI();
 

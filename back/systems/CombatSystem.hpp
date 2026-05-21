@@ -8,5 +8,5 @@ public:
     static void setDiffStatsTable(const std::array<std::array<float, 7>, 32>& table);
     static int calculateStatDifference(float attackerStat, float defenderStat, int referenceLevel);
     // Execute attack and return the calculated effectiveness
-    static int executeAttack(Entity& attacker, Entity& defender);
+    static int executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier = 1.0f);
 };
