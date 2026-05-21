@@ -1,0 +1,9 @@
+{
+    "nom": "cote de mailles en parbélienne",
+    "durabilite": 36,
+    "type_de_materiau": "Mineral",
+    "stats": {
+        "res": 17,
+        "res_magique": 17
+    }
+}

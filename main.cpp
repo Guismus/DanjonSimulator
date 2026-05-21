@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
 
     DataStore::getInstance().loadSystemData("data/diff_stats.json");
     DataStore::getInstance().loadEnergySystem("data/energy_system.json");
+    DataStore::getInstance().loadArmors("data/Equipement/Armure");
     DataStore::getInstance().loadEntities("data/entities");
 
     MainWindow window;

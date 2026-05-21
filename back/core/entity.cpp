@@ -5,23 +5,35 @@ Entity::Entity(const std::string& name)
     : name(name), stade(1), rank(1),
       force(0.0f), resistance(0.0f), vitesse(0.0f), forceMagique(0.0f), resistanceMagique(0.0f),
       blood(32.0f), physicalReserve(0.0f), maxPhysicalReserve(0.0f), magicReserve(0.0f),
-      weight(Weight::Moyen) {
+      weight(Weight::Moyen), physicalDamageType(PhysicalDamageType::Neutre) {
 }
 
 const std::string& Entity::getName() const {
     return name;
 }
 
-void Entity::applyWound(int eff) {
+void Entity::applyWound(int eff, PhysicalDamageType type) {
     // Les blessures négatives sont également accumulées !
     // Combiner les blessures identiques : 2 Stade X = Stade X+2
-    while (std::find(wounds.begin(), wounds.end(), eff) != wounds.end()) {
-        wounds.erase(std::find(wounds.begin(), wounds.end(), eff));
+    auto it = std::find_if(wounds.begin(), wounds.end(), [eff](const Wound& w) {
+        return w.effectiveness == eff;
+    });
+    
+    while (it != wounds.end()) {
+        if (it->damageType == PhysicalDamageType::Tranchant) {
+            type = PhysicalDamageType::Tranchant;
+        }
+        wounds.erase(it);
         eff += 2;
+        it = std::find_if(wounds.begin(), wounds.end(), [eff](const Wound& w) {
+            return w.effectiveness == eff;
+        });
     }
     
-    wounds.push_back(eff);
-    std::sort(wounds.begin(), wounds.end(), std::greater<int>()); // Keep largest first
+    wounds.push_back({eff, type});
+    std::sort(wounds.begin(), wounds.end(), [](const Wound& a, const Wound& b) {
+        return a.effectiveness > b.effectiveness;
+    });
 }
 
 void Entity::applyBleeding(int severity) {
@@ -30,8 +42,8 @@ void Entity::applyBleeding(int severity) {
 }
 
 bool Entity::isDead() const {
-    // Si on a une blessure de Stade 5 (ou plus), c'est la mort
-    return !wounds.empty() && wounds.front() >= 5;
+    // Si on a une blessure de Stade 5 (ou plus), ou si la réserve de sang est à 0, c'est la mort
+    return (!wounds.empty() && wounds.front().effectiveness >= 5) || (blood <= 0);
 }
 
 std::string Entity::getPhysicalState() const {
@@ -45,4 +57,42 @@ std::string Entity::getPhysicalState() const {
     if (physicalReserve <= physicalThresholds.haletant) return "Haletant";
     if (physicalReserve <= physicalThresholds.essouffle) return "Essoufflé";
     return "En forme";
+}
+
+PhysicalDamageType Entity::getActiveDamageType() const {
+    if (weapon.has_value()) {
+        if (weapon->type == WeaponType::Tranchant) return PhysicalDamageType::Tranchant;
+        if (weapon->type == WeaponType::Contondant) return PhysicalDamageType::Contondant;
+    }
+    return physicalDamageType;
+}
+
+int Entity::getBleedingRate() const {
+    int maxRate = 0;
+    for (const auto& wound : wounds) {
+        if (wound.damageType == PhysicalDamageType::Tranchant) {
+            int rate = 0;
+            if (wound.effectiveness <= 0) {
+                rate = 1;
+            } else if (wound.effectiveness == 1 || wound.effectiveness == 2) {
+                rate = 2;
+            } else if (wound.effectiveness >= 3) {
+                rate = 3;
+            }
+            if (rate > maxRate) {
+                maxRate = rate;
+            }
+        }
+    }
+    return maxRate;
+}
+
+std::string Entity::getBleedingState() const {
+    int rate = getBleedingRate();
+    switch (rate) {
+        case 1: return "Bénin";
+        case 2: return "Violent";
+        case 3: return "Grave";
+        default: return "Aucun";
+    }
 }

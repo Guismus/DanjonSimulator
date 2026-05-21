@@ -7,5 +7,10 @@
     "forceMagique": 10.0,
     "resistanceMagique": 19.0,
     "weight": "Leger",
-    "rank": "E"
+    "rank": "E",
+    "equipement": {
+        "armure": {
+            "torse": "cote_de_mailles_en_parbelienne"
+        }
+    }
 }

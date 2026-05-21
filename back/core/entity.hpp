@@ -18,9 +18,16 @@ enum class WeaponType {
     Contondant
 };
 
-enum class ArmorType {
-    CuirEcaille,
-    MetalChitineCristal
+enum class PhysicalDamageType {
+    Neutre,
+    Contondant,
+    Tranchant
+};
+
+enum class ArmorMaterial {
+    Fibre,
+    Peau,
+    Mineral
 };
 
 struct Weapon {
@@ -32,9 +39,11 @@ struct Weapon {
 
 struct Armor {
     std::string name;
-    ArmorType type;
+    ArmorMaterial material;
     int durability;
-    int resistanceMod;
+    int maxDurability;
+    int res;
+    int resMagique;
 };
 
 struct Catalyst {
@@ -50,6 +59,11 @@ struct EnergyThresholds {
     float epuise = -1;
     float aBout = -1;
     float inconscient = 0;
+};
+
+struct Wound {
+    int effectiveness;
+    PhysicalDamageType damageType;
 };
 
 class Entity {
@@ -82,14 +96,19 @@ public:
     std::optional<Armor> armor;
     std::optional<Catalyst> catalyst;
 
+    PhysicalDamageType physicalDamageType = PhysicalDamageType::Neutre;
+
     // Methods
     const std::string& getName() const;
-    void applyWound(int effectiveness);
+    void applyWound(int effectiveness, PhysicalDamageType type);
     void applyBleeding(int severity);
     bool isDead() const;
     std::string getPhysicalState() const;
+    PhysicalDamageType getActiveDamageType() const;
+    int getBleedingRate() const;
+    std::string getBleedingState() const;
     
-    std::vector<int> wounds; // Tracks current wound stages
+    std::vector<Wound> wounds; // Tracks current wound stages
 
 private:
     std::string name;

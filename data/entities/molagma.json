@@ -8,6 +8,7 @@
     "forceMagique": 8.0,
     "resistanceMagique": 23.0,
     "weight": "Moyen",
+    "physicalDamageType": "Tranchant",
     "passives": [
         "Camouflage réfléchissant",
         "Traque sanguine"

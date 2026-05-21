@@ -55,9 +55,59 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender) {
     
     int effectiveness = calculateStatDifference(attacker.force, defender.resistance, refLevel);
     
-    // According to the rules: Damage is tracked in stages.
-    // Effectiveness < 0 means no wound. Effectiveness >= 0 adds a wound.
-    defender.applyWound(effectiveness);
+    bool blocked = false;
+    if (defender.armor.has_value() && defender.armor->durability > 0) {
+        auto& armor = defender.armor.value();
+        
+        int refArmorLevel = (attacker.force < armor.res) ? attacker.stade : defender.stade;
+        int eff_armor = calculateStatDifference(attacker.force, armor.res, refArmorLevel);
+        
+        int durabilityLoss = 0;
+        if (eff_armor <= -5) {
+            durabilityLoss = 0;
+        } else if (eff_armor == -4) {
+            durabilityLoss = 1;
+        } else if (eff_armor == -3) {
+            durabilityLoss = 2;
+        } else if (eff_armor == -2) {
+            durabilityLoss = 3;
+        } else if (eff_armor == -1) {
+            durabilityLoss = 4;
+        } else if (eff_armor == 0) {
+            durabilityLoss = 5;
+        } else if (eff_armor == 1) {
+            durabilityLoss = 6;
+        } else if (eff_armor == 2) {
+            durabilityLoss = 7;
+        } else if (eff_armor == 3) {
+            durabilityLoss = 8;
+        } else if (eff_armor == 4) {
+            durabilityLoss = 9;
+        } else { // eff_armor >= 5 (Domination)
+            durabilityLoss = armor.durability;
+        }
+        
+        armor.durability = std::max(0, armor.durability - durabilityLoss);
+        
+        if (armor.material == ArmorMaterial::Peau) {
+            if (effectiveness >= 0) {
+                effectiveness = static_cast<int>(effectiveness * 0.9f);
+            }
+        } else if (armor.material == ArmorMaterial::Mineral) {
+            if (attacker.getActiveDamageType() == PhysicalDamageType::Contondant) {
+                if (effectiveness >= 0) {
+                    effectiveness = static_cast<int>(effectiveness * 0.9f);
+                }
+            } else {
+                blocked = true;
+            }
+        }
+    }
     
-    return effectiveness;
+    if (blocked) {
+        return -99;
+    } else {
+        defender.applyWound(effectiveness, attacker.getActiveDamageType());
+        return effectiveness;
+    }
 }

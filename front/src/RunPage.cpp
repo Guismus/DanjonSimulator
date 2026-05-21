@@ -9,6 +9,7 @@
 #include <QDateTime>
 
 static QString getStageName(int eff) {
+    if (eff == -99) return "Bloqué par l'armure";
     if (eff == 0) return "Neutre";
     QString name;
     switch (std::abs(eff)) {
@@ -23,6 +24,15 @@ static QString getStageName(int eff) {
     }
     if (eff < 0) return "Sous-" + name;
     return name;
+}
+
+static QString getDamageTypeName(PhysicalDamageType type) {
+    switch (type) {
+        case PhysicalDamageType::Neutre: return "Neutre (Pugilat)";
+        case PhysicalDamageType::Contondant: return "Contondant";
+        case PhysicalDamageType::Tranchant: return "Tranchant";
+    }
+    return "Inconnu";
 }
 
 RunPage::RunPage(QWidget *parent) : QWidget(parent) {
@@ -137,8 +147,8 @@ void RunPage::startCombat() {
     
     // In RunPage::startCombat()
     // Give them some default stats for testing if they are new
-    if (!opt1) { fighter1->force = 10.0f; fighter1->blood = 0.0f; fighter1->stade = 1; }
-    if (!opt2) { fighter2->force = 8.0f; fighter2->blood = 0.0f; fighter2->stade = 1; }
+    if (!opt1) { fighter1->force = 10.0f; fighter1->blood = 32.0f; fighter1->stade = 1; }
+    if (!opt2) { fighter2->force = 8.0f; fighter2->blood = 32.0f; fighter2->stade = 1; }
     
     // Reset damage (wounds vector)
     fighter1->wounds.clear();
@@ -163,11 +173,18 @@ void RunPage::startCombat() {
 
 void RunPage::updateCombatUI() {
     if (fighter1 && fighter2) {
-        auto formatWounds = [](const std::vector<int>& w) {
+        auto formatWounds = [](const std::vector<Wound>& w) {
             if (w.empty()) return QString("Aucune");
             QString res = "[";
             for (size_t i = 0; i < w.size(); ++i) {
-                res += getStageName(w[i]);
+                res += getStageName(w[i].effectiveness);
+                if (w[i].damageType == PhysicalDamageType::Tranchant) {
+                    res += " (Tranchante)";
+                } else if (w[i].damageType == PhysicalDamageType::Contondant) {
+                    res += " (Contondante)";
+                } else {
+                    res += " (Neutre)";
+                }
                 if (i < w.size() - 1) res += ", ";
             }
             res += "]";
@@ -176,16 +193,44 @@ void RunPage::updateCombatUI() {
         
         p1NameLabel->setText(QString::fromStdString(fighter1->getName()));
         if (fighter1) {
+            QString armorInfo = "Armure : Aucune";
+            if (fighter1->armor.has_value()) {
+                const auto& armor = fighter1->armor.value();
+                armorInfo = QString("Armure : %1 (Durabilité : %2/%3)")
+                            .arg(QString::fromStdString(armor.name))
+                            .arg(armor.durability)
+                            .arg(armor.maxDurability);
+                if (armor.durability <= 0) {
+                    armorInfo += " [ROMPUE]";
+                }
+            }
             p1HpLabel->setText("Blessures : " + formatWounds(fighter1->wounds) + "\n" +
+                               "Saignement : " + QString::fromStdString(fighter1->getBleedingState()) + " (" + QString::number(fighter1->getBleedingRate()) + " tics/tour)\n" +
+                               "Sang : " + QString::number(fighter1->blood, 'f', 1) + " / 32.0 tics\n" +
                                "Endurance : " + QString::number(fighter1->physicalReserve) + " / " + QString::number(fighter1->maxPhysicalReserve) + 
-                               " (" + QString::fromStdString(fighter1->getPhysicalState()) + ")");
+                               " (" + QString::fromStdString(fighter1->getPhysicalState()) + ")\n" +
+                               armorInfo);
         }
         
         p2NameLabel->setText(QString::fromStdString(fighter2->getName()));
         if (fighter2) {
+            QString armorInfo = "Armure : Aucune";
+            if (fighter2->armor.has_value()) {
+                const auto& armor = fighter2->armor.value();
+                armorInfo = QString("Armure : %1 (Durabilité : %2/%3)")
+                            .arg(QString::fromStdString(armor.name))
+                            .arg(armor.durability)
+                            .arg(armor.maxDurability);
+                if (armor.durability <= 0) {
+                    armorInfo += " [ROMPUE]";
+                }
+            }
             p2HpLabel->setText("Blessures : " + formatWounds(fighter2->wounds) + "\n" +
+                               "Saignement : " + QString::fromStdString(fighter2->getBleedingState()) + " (" + QString::number(fighter2->getBleedingRate()) + " tics/tour)\n" +
+                               "Sang : " + QString::number(fighter2->blood, 'f', 1) + " / 32.0 tics\n" +
                                "Endurance : " + QString::number(fighter2->physicalReserve) + " / " + QString::number(fighter2->maxPhysicalReserve) + 
-                               " (" + QString::fromStdString(fighter2->getPhysicalState()) + ")");
+                               " (" + QString::fromStdString(fighter2->getPhysicalState()) + ")\n" +
+                               armorInfo);
         }
         
         // If someone is dead, disable both buttons
@@ -210,19 +255,79 @@ void RunPage::resolveTurn() {
     }
 
     // First attacker hits
+    std::optional<int> preArmorDurability1;
+    if (second->armor.has_value()) {
+        preArmorDurability1 = second->armor->durability;
+    }
+
     int eff1 = CombatSystem::executeAttack(*first, *second);
-    msg += QString::fromStdString(first->getName()) + " tape (Vit: " + QString::number(first->vitesse) + ") et inflige un " + getStageName(eff1);
+    msg += QString::fromStdString(first->getName()) + " tape [" + getDamageTypeName(first->getActiveDamageType()) + "] (Vit: " + QString::number(first->vitesse) + ") et inflige un " + getStageName(eff1);
+
+    if (second->armor.has_value() && preArmorDurability1.has_value()) {
+        int currentDur = second->armor->durability;
+        int diff = preArmorDurability1.value() - currentDur;
+        if (diff > 0) {
+            msg += QString("\n  [Armure] %1 subit -%2 de durabilité (%3/%4)")
+                   .arg(QString::fromStdString(second->armor->name))
+                   .arg(diff)
+                   .arg(currentDur)
+                   .arg(second->armor->maxDurability);
+            if (currentDur == 0 && preArmorDurability1.value() > 0) {
+                msg += QString("\n  [Armure] %1 est rompue !").arg(QString::fromStdString(second->armor->name));
+            }
+        }
+    }
 
     if (second->isDead()) {
         msg += "\n" + QString::fromStdString(second->getName()) + " est K.O !";
     } else {
         // Second attacker hits back
+        std::optional<int> preArmorDurability2;
+        if (first->armor.has_value()) {
+            preArmorDurability2 = first->armor->durability;
+        }
+
         int eff2 = CombatSystem::executeAttack(*second, *first);
-        msg += "\n" + QString::fromStdString(second->getName()) + " tape (Vit: " + QString::number(second->vitesse) + ") et inflige un " + getStageName(eff2);
+        msg += "\n" + QString::fromStdString(second->getName()) + " tape [" + getDamageTypeName(second->getActiveDamageType()) + "] (Vit: " + QString::number(second->vitesse) + ") et inflige un " + getStageName(eff2);
+
+        if (first->armor.has_value() && preArmorDurability2.has_value()) {
+            int currentDur = first->armor->durability;
+            int diff = preArmorDurability2.value() - currentDur;
+            if (diff > 0) {
+                msg += QString("\n  [Armure] %1 subit -%2 de durabilité (%3/%4)")
+                       .arg(QString::fromStdString(first->armor->name))
+                       .arg(diff)
+                       .arg(currentDur)
+                       .arg(first->armor->maxDurability);
+                if (currentDur == 0 && preArmorDurability2.value() > 0) {
+                    msg += QString("\n  [Armure] %1 est rompue !").arg(QString::fromStdString(first->armor->name));
+                }
+            }
+        }
 
         if (first->isDead()) {
             msg += "\n" + QString::fromStdString(first->getName()) + " est K.O !";
         }
+    }
+
+    // Apply bleeding at turn end
+    msg += "\n\n--- Effets de Saignement ---";
+    bool bleedingHappened = false;
+    for (Entity* entity : { first, second }) {
+        if (!entity->isDead()) {
+            int rate = entity->getBleedingRate();
+            if (rate > 0) {
+                entity->applyBleeding(rate);
+                msg += "\n" + QString::fromStdString(entity->getName()) + " perd " + QString::number(rate) + " tic(s) de sang (Sang restant : " + QString::number(entity->blood, 'f', 1) + "/32.0).";
+                bleedingHappened = true;
+                if (entity->isDead()) {
+                    msg += "\n" + QString::fromStdString(entity->getName()) + " succombe à l'hémorragie (K.O) !";
+                }
+            }
+        }
+    }
+    if (!bleedingHappened) {
+        msg += "\nAucun saignement actif.";
     }
 
     combatLog->append(msg + "\n");

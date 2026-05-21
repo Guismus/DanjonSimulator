@@ -15,6 +15,7 @@ public:
 
     bool loadSystemData(const std::string& filepath);
     bool loadEnergySystem(const std::string& filepath);
+    bool loadArmors(const std::string& directoryPath);
     bool loadEntities(const std::string& directoryPath);
     
     std::optional<Entity> getEntityTemplate(const std::string& name) const;
@@ -29,5 +30,6 @@ private:
     DataStore& operator=(const DataStore&) = delete;
 
     std::map<std::string, Entity> entityTemplates;
+    std::map<std::string, Armor> armorTemplates;
     std::map<int, EnergyThresholds> rankThresholds;
 };

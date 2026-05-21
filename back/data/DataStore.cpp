@@ -65,6 +65,62 @@ const EnergyThresholds* DataStore::getEnergyThresholds(int rank) const {
     return nullptr;
 }
 
+bool DataStore::loadArmors(const std::string& directoryPath) {
+    if (!fs::exists(directoryPath)) {
+        std::cerr << "Armor directory does not exist: " << directoryPath << std::endl;
+        return false;
+    }
+    bool success = true;
+    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+        if (entry.path().extension() == ".json") {
+            std::ifstream file(entry.path());
+            if (!file.is_open()) {
+                std::cerr << "Failed to open armor file: " << entry.path() << std::endl;
+                success = false;
+                continue;
+            }
+            try {
+                json j;
+                file >> j;
+                
+                Armor armor;
+                armor.name = j.value("nom", j.value("name", "Unknown"));
+                
+                std::string matStr = j.value("type_de_materiau", j.value("type de matériau", j.value("materiau", j.value("material", "Fibre"))));
+                if (matStr == "Peau" || matStr == "peau" || matStr == "Peau (cuir, écaille)" || matStr == "cuir" || matStr == "écaille") {
+                    armor.material = ArmorMaterial::Peau;
+                } else if (matStr == "Mineral" || matStr == "mineral" || matStr == "Minéral" || matStr == "minéral" || matStr == "metal" || matStr == "métal" || matStr == "mailles") {
+                    armor.material = ArmorMaterial::Mineral;
+                } else {
+                    armor.material = ArmorMaterial::Fibre;
+                }
+                
+                armor.durability = j.value("durabilite", j.value("durability", 0));
+                armor.maxDurability = armor.durability;
+                
+                int res = 0;
+                int resMagique = 0;
+                if (j.contains("stats")) {
+                    res = j["stats"].value("res", 0);
+                    resMagique = j["stats"].value("res_magique", j["stats"].value("resMagique", j["stats"].value("rmag", 0)));
+                } else {
+                    res = j.value("res", 0);
+                    resMagique = j.value("res_magique", j.value("resMagique", j.value("rmag", 0)));
+                }
+                armor.res = res;
+                armor.resMagique = resMagique;
+                
+                std::string key = entry.path().stem().string();
+                armorTemplates[key] = armor;
+            } catch (json::parse_error& e) {
+                std::cerr << "JSON parse error in armor " << entry.path() << ": " << e.what() << std::endl;
+                success = false;
+            }
+        }
+    }
+    return success;
+}
+
 bool DataStore::loadEntities(const std::string& directoryPath) {
     bool success = true;
     for (const auto& entry : fs::directory_iterator(directoryPath)) {
@@ -115,10 +171,44 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 else if (weightStr == "Effondrement") entity.weight = Weight::Effondrement;
                 else entity.weight = Weight::Moyen;
 
+                std::string dmgTypeStr = j.value("physicalDamageType", "Neutre");
+                if (dmgTypeStr == "Contondant") entity.physicalDamageType = PhysicalDamageType::Contondant;
+                else if (dmgTypeStr == "Tranchant") entity.physicalDamageType = PhysicalDamageType::Tranchant;
+                else entity.physicalDamageType = PhysicalDamageType::Neutre;
+
                 if (auto t = getEnergyThresholds(entity.rank)) {
                     entity.physicalThresholds = *t;
                     entity.maxPhysicalReserve = t->maxReserve;
                     entity.physicalReserve = t->maxReserve; // Start at max
+                }
+
+                std::string armorKey = "";
+                for (const char* eqKey : {"equipement", "equipment", "Equipement", "Equipment"}) {
+                    if (j.contains(eqKey) && j[eqKey].is_object()) {
+                        auto equip = j[eqKey];
+                        for (const char* arKey : {"armure", "armor", "Armure", "Armor"}) {
+                            if (equip.contains(arKey) && equip[arKey].is_object()) {
+                                auto armure = equip[arKey];
+                                for (const char* tsKey : {"torse", "chest", "Torse", "Chest"}) {
+                                    if (armure.contains(tsKey) && armure[tsKey].is_string()) {
+                                        armorKey = armure[tsKey].get<std::string>();
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!armorKey.empty()) break;
+                        }
+                    }
+                    if (!armorKey.empty()) break;
+                }
+                
+                if (!armorKey.empty()) {
+                    auto armorIt = armorTemplates.find(armorKey);
+                    if (armorIt != armorTemplates.end()) {
+                        entity.armor = armorIt->second;
+                    } else {
+                        std::cerr << "Armor template not found: " << armorKey << std::endl;
+                    }
                 }
 
                 entityTemplates.emplace(name, entity);
