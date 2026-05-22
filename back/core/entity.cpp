@@ -43,7 +43,14 @@ void Entity::applyBleeding(int severity) {
 
 bool Entity::isDead() const {
     // Si on a une blessure de Stade 5 (ou plus), ou si la réserve de sang est à 0, c'est la mort
-    return (!wounds.empty() && wounds.front().effectiveness >= 5) || (blood <= 0) || (physicalReserve <= 0);
+    if (blood <= 0) return true;
+    if (!wounds.empty() && wounds.front().effectiveness >= 5) return true;
+
+    // Règle additionnelle : Stade 4+ (Surpuissance) combiné avec Stade 0+ (Neutre ou plus) provoque la mort
+    if (wounds.size() >= 2 && wounds[0].effectiveness >= 4 && wounds[1].effectiveness >= 0) {
+        return true;
+    }
+    return false;
 }
 
 std::string Entity::getPhysicalState() const {

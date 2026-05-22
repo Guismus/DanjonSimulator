@@ -176,8 +176,10 @@ void RunPage::startCombat() {
     
     float v1 = fighter1->vitesse;
     float v2 = fighter2->vitesse;
-    p1FreeActions = 2 + (v1 >= v2 && v2 > 0 ? static_cast<int>(v1 / v2) : 0);
-    p2FreeActions = 2 + (v2 >= v1 && v1 > 0 ? static_cast<int>(v2 / v1) : 0);
+    int refLevel = std::min(fighter1->stade, fighter2->stade);
+    int speedDiff = CombatSystem::calculateStatDifference(v1, v2, refLevel);
+    p1FreeActions = 2 + (speedDiff > 0 ? speedDiff : 0);
+    p2FreeActions = 2 + (speedDiff < 0 ? -speedDiff : 0);
 
     currentTurn = 1;
     
@@ -258,7 +260,7 @@ void RunPage::updateCombatUI() {
                                armorInfo);
         }
         
-        if (fighter1->isDead() || fighter2->isDead()) {
+        if (fighter1->isDead() || fighter2->isDead() || fighter1->physicalReserve <= 0 || fighter2->physicalReserve <= 0) {
             p1AttackBtn->setEnabled(false);
             p1CancelBtn->setEnabled(false);
             p2AttackBtn->setEnabled(false);
@@ -328,11 +330,7 @@ void RunPage::resolveTurn() {
         }
 
         if (defender->isDead()) {
-            if (defender->physicalReserve <= 0) logMsg += "\n" + QString::fromStdString(defender->getName()) + " s'effondre de fatigue (K.O) !";
-            else logMsg += "\n" + QString::fromStdString(defender->getName()) + " est K.O !";
-        }
-        if (attacker->isDead() && attacker->physicalReserve <= 0) {
-            logMsg += "\n" + QString::fromStdString(attacker->getName()) + " s'effondre de fatigue suite à son effort (K.O) !";
+            logMsg += "\n" + QString::fromStdString(defender->getName()) + " est K.O !";
         }
         combatLog->append(logMsg);
     };
@@ -356,18 +354,24 @@ void RunPage::resolveTurn() {
     int firstDone = 0;
     int secondDone = 0;
 
-    while ((firstDone < firstQueued || secondDone < secondQueued) && !first->isDead() && !second->isDead()) {
+    while ((firstDone < firstQueued || secondDone < secondQueued) && 
+           !first->isDead() && first->physicalReserve > 0 && 
+           !second->isDead() && second->physicalReserve > 0) {
         if (firstDone < firstQueued) {
-            applyAttack(first, second, firstDone, firstFree);
+            if (!first->isDead() && first->physicalReserve > 0) {
+                applyAttack(first, second, firstDone, firstFree);
+            }
             firstDone++;
         }
-        if (second->isDead() || first->isDead()) break;
+        if (second->isDead() || second->physicalReserve <= 0 || first->isDead() || first->physicalReserve <= 0) break;
         
         if (secondDone < secondQueued) {
-            applyAttack(second, first, secondDone, secondFree);
+            if (!second->isDead() && second->physicalReserve > 0) {
+                applyAttack(second, first, secondDone, secondFree);
+            }
             secondDone++;
         }
-        if (first->isDead() || second->isDead()) break;
+        if (first->isDead() || first->physicalReserve <= 0 || second->isDead() || second->physicalReserve <= 0) break;
     }
 
     // Apply bleeding at turn end
@@ -391,15 +395,37 @@ void RunPage::resolveTurn() {
     
     p1QueuedAttacks = 0;
     p2QueuedAttacks = 0;
-    currentTurn++;
     
-    combatLog->append("--- Préparation du Tour " + QString::number(currentTurn) + " ---\n");
+    bool combatFinished = fighter1->isDead() || fighter2->isDead() || fighter1->physicalReserve <= 0 || fighter2->physicalReserve <= 0;
+    if (combatFinished) {
+        QString endMsg = "\n======================================";
+        endMsg += "\n           FIN DU COMBAT";
+        endMsg += "\n======================================";
+        
+        bool f1_out = fighter1->isDead() || fighter1->physicalReserve <= 0;
+        bool f2_out = fighter2->isDead() || fighter2->physicalReserve <= 0;
+        
+        if (f1_out && f2_out) {
+            endMsg += "\nMatch nul ! Les deux combattants sont hors de combat.";
+        } else if (f1_out) {
+            QString reason = fighter1->isDead() ? "mort" : "épuisement";
+            endMsg += "\n" + QString::fromStdString(fighter1->getName()) + " est hors de combat (" + reason + ").";
+            endMsg += "\nVictoire de " + QString::fromStdString(fighter2->getName()) + " !";
+        } else {
+            QString reason = fighter2->isDead() ? "mort" : "épuisement";
+            endMsg += "\n" + QString::fromStdString(fighter2->getName()) + " est hors de combat (" + reason + ").";
+            endMsg += "\nVictoire de " + QString::fromStdString(fighter1->getName()) + " !";
+        }
+        endMsg += "\n======================================\n";
+        combatLog->append(endMsg);
+        
+        saveCombatLog();
+    } else {
+        currentTurn++;
+        combatLog->append("--- Préparation du Tour " + QString::number(currentTurn) + " ---\n");
+    }
     
     updateCombatUI();
-
-    if (fighter1->isDead() || fighter2->isDead()) {
-        saveCombatLog();
-    }
 }
 
 void RunPage::saveCombatLog() {

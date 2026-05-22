@@ -26,3 +26,13 @@ else()
     # Si jamais tu passes sur GCC ou Clang plus tard
     target_compile_options(DanjonSimulator PRIVATE -std=c++26)
 endif()
+
+# 4. On ajoute le binaire de tests unitaires (sans Qt)
+add_executable(test_core test_core.cpp ${BACK_SOURCES})
+target_include_directories(test_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/back/deps)
+if(MSVC)
+    target_compile_options(test_core PRIVATE /std:c++latest)
+    target_compile_definitions(test_core PRIVATE _HAS_CXX26=1)
+else()
+    target_compile_options(test_core PRIVATE -std=c++26)
+endif()

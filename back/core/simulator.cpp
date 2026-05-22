@@ -1,4 +1,4 @@
-#include "Simulator.hpp"
+#include "simulator.hpp"
 #include <print>
 
 Simulator::Simulator() {
