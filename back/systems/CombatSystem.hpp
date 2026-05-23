@@ -9,4 +9,6 @@ public:
     static int calculateStatDifference(float attackerStat, float defenderStat, int referenceLevel);
     // Execute attack and return the calculated effectiveness
     static int executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier = 1.0f);
+    static void executeParry(Entity& character, float enduranceMultiplier = 1.0f);
+    static void executeDodge(Entity& character, float enduranceMultiplier = 1.0f);
 };

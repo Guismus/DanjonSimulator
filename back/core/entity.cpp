@@ -1,10 +1,12 @@
 #include "entity.hpp"
 #include <algorithm>
+#include <cmath>
 
 Entity::Entity(const std::string& name)
     : name(name), stade(1), rank(1),
       force(0.0f), resistance(0.0f), vitesse(0.0f), forceMagique(0.0f), resistanceMagique(0.0f),
       blood(32.0f), physicalReserve(0.0f), maxPhysicalReserve(0.0f), magicReserve(0.0f),
+      activeParries(0), activeDodges(0),
       physicalDamageType(PhysicalDamageType::Neutre) {
 }
 
@@ -102,4 +104,60 @@ std::string Entity::getBleedingState() const {
         case 3: return "Grave";
         default: return "Aucun";
     }
+}
+
+float Entity::getEffectiveForce() const {
+    float val = force;
+    if (!wounds.empty()) {
+        int maxW = wounds.front().effectiveness;
+        if (maxW >= 4) {
+            val *= 0.70f;
+        } else if (maxW == 3) {
+            val *= 0.85f;
+        }
+    }
+    return std::ceil(val * 4.0f) / 4.0f;
+}
+
+float Entity::getEffectiveResistance() const {
+    return std::ceil(resistance * 4.0f) / 4.0f;
+}
+
+float Entity::getEffectiveVitesse() const {
+    float val = vitesse;
+    if (!wounds.empty()) {
+        int maxW = wounds.front().effectiveness;
+        if (maxW >= 4) {
+            val *= 0.70f;
+        } else if (maxW == 3) {
+            val *= 0.85f;
+        }
+    }
+    return std::ceil(val * 4.0f) / 4.0f;
+}
+
+float Entity::getEffectiveForceMagique() const {
+    float val = forceMagique;
+    if (!wounds.empty()) {
+        int maxW = wounds.front().effectiveness;
+        if (maxW >= 4) {
+            val *= 0.70f;
+        } else if (maxW == 3) {
+            val *= 0.85f;
+        }
+    }
+    return std::ceil(val * 4.0f) / 4.0f;
+}
+
+float Entity::getEffectiveResistanceMagique() const {
+    return std::ceil(resistanceMagique * 4.0f) / 4.0f;
+}
+
+bool Entity::hasPassive(const std::string& passiveName) const {
+    for (const auto& passive : passives) {
+        if (passive == passiveName) {
+            return true;
+        }
+    }
+    return false;
 }

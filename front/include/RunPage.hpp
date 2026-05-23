@@ -8,6 +8,17 @@
 #include <optional>
 #include "../../back/core/entity.hpp"
 
+enum class ActionType {
+    Attack,
+    Parry,
+    Dodge
+};
+
+struct QueuedAction {
+    ActionType type;
+    float overclockMultiplier = 1.0f;
+};
+
 class RunPage : public QWidget {
     Q_OBJECT
 
@@ -31,8 +42,12 @@ private:
     QLabel* p2NameLabel;
     QLabel* p2HpLabel;
     QPushButton* p1AttackBtn;
+    QPushButton* p1ParryBtn;
+    QPushButton* p1DodgeBtn;
     QPushButton* p1CancelBtn;
     QPushButton* p2AttackBtn;
+    QPushButton* p2ParryBtn;
+    QPushButton* p2DodgeBtn;
     QPushButton* p2CancelBtn;
     QPushButton* endTurnBtn;
     QTextEdit* combatLog;
@@ -40,8 +55,8 @@ private:
     std::optional<Entity> fighter1;
     std::optional<Entity> fighter2;
     
-    int p1QueuedAttacks;
-    int p2QueuedAttacks;
+    std::vector<QueuedAction> p1Actions;
+    std::vector<QueuedAction> p2Actions;
     int p1FreeActions;
     int p2FreeActions;
     int currentTurn = 1;

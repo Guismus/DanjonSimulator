@@ -98,6 +98,9 @@ public:
 
     PhysicalDamageType physicalDamageType = PhysicalDamageType::Neutre;
 
+    int activeParries = 0;
+    int activeDodges = 0;
+
     // Methods
     const std::string& getName() const;
     void applyWound(int effectiveness, PhysicalDamageType type);
@@ -108,6 +111,13 @@ public:
     int getBleedingRate() const;
     std::string getBleedingState() const;
     
+    float getEffectiveForce() const;
+    float getEffectiveResistance() const;
+    float getEffectiveVitesse() const;
+    float getEffectiveForceMagique() const;
+    float getEffectiveResistanceMagique() const;
+    bool hasPassive(const std::string& passiveName) const;
+
     std::vector<Wound> wounds; // Tracks current wound stages
 
 private:

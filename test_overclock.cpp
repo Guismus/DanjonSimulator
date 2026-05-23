@@ -56,8 +56,8 @@ int main() {
     // Simulate 50 queued attacks
     int firstQueued = 50;
     int secondQueued = 0;
-    float v1 = fighter1.vitesse;
-    float v2 = fighter2.vitesse;
+    float v1 = fighter1.getEffectiveVitesse();
+    float v2 = fighter2.getEffectiveVitesse();
     int refLevel = std::min(fighter1.stade, fighter2.stade);
     int speedDiff = CombatSystem::calculateStatDifference(v1, v2, refLevel);
     int firstFree = 2 + (speedDiff > 0 ? speedDiff : 0);

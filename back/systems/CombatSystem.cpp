@@ -33,6 +33,24 @@ int CombatSystem::calculateStatDifference(float attackerStat, float defenderStat
     return isNegative ? -effectiveness : effectiveness;
 }
 
+void CombatSystem::executeParry(Entity& character, float enduranceMultiplier) {
+    float cost = 7.5f * enduranceMultiplier;
+    character.physicalReserve -= cost;
+    if (character.physicalReserve < 0) {
+        character.physicalReserve = 0;
+    }
+    character.activeParries++;
+}
+
+void CombatSystem::executeDodge(Entity& character, float enduranceMultiplier) {
+    float cost = 10.0f * enduranceMultiplier;
+    character.physicalReserve -= cost;
+    if (character.physicalReserve < 0) {
+        character.physicalReserve = 0;
+    }
+    character.activeDodges++;
+}
+
 int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier) {
     // Cost in endurance per attack (Pugilat by default = 7.5f)
     float cost = 7.5f; 
@@ -54,18 +72,48 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
         attacker.physicalReserve = 0;
     }
 
+    // Check Dodge first
+    if (defender.activeDodges > 0) {
+        defender.activeDodges--;
+        return -98; // Special code for Evaded/Esquivé
+    }
+
+    float attForce = attacker.getEffectiveForce();
+    float defRes = defender.getEffectiveResistance();
+
     // Determine which character has the lowest stat involved (Force vs Resistance)
     // and use their level as reference for the calculation
-    int refLevel = (attacker.force < defender.resistance) ? attacker.stade : defender.stade;
+    int refLevel = (attForce < defRes) ? attacker.stade : defender.stade;
     
-    int effectiveness = calculateStatDifference(attacker.force, defender.resistance, refLevel);
+    int effectiveness = calculateStatDifference(attForce, defRes, refLevel);
+    
+    // Check Parry
+    bool parried = false;
+    bool parryBlocked = false;
+    if (defender.activeParries > 0) {
+        defender.activeParries--;
+        parried = true;
+        if (defender.hasPassive("Bouclier en métal") && attacker.getActiveDamageType() == PhysicalDamageType::Tranchant) {
+            parryBlocked = true;
+        }
+    }
+
+    if (parryBlocked) {
+        return -97; // Special code for Parry Blocked (bouclier en métal vs tranchant)
+    }
+
+    if (parried) {
+        if (effectiveness >= 0) {
+            effectiveness = static_cast<int>(effectiveness * 0.9f); // 10% reduction
+        }
+    }
     
     bool blocked = false;
     if (defender.armor.has_value() && defender.armor->durability > 0) {
         auto& armor = defender.armor.value();
         
-        int refArmorLevel = (attacker.force < armor.res) ? attacker.stade : defender.stade;
-        int eff_armor = calculateStatDifference(attacker.force, armor.res, refArmorLevel);
+        int refArmorLevel = (attForce < armor.res) ? attacker.stade : defender.stade;
+        int eff_armor = calculateStatDifference(attForce, armor.res, refArmorLevel);
         
         int durabilityLoss = 0;
         if (eff_armor <= -5) {
@@ -97,12 +145,12 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
         if (armor.durability > 0) {
             if (armor.material == ArmorMaterial::Peau) {
                 if (effectiveness >= 0) {
-                    effectiveness = static_cast<int>(effectiveness * 0.9f);
+                    effectiveness = static_cast<int>(effectiveness * 0.85f); // 15% reduction
                 }
             } else if (armor.material == ArmorMaterial::Mineral) {
                 if (attacker.getActiveDamageType() == PhysicalDamageType::Contondant) {
                     if (effectiveness >= 0) {
-                        effectiveness = static_cast<int>(effectiveness * 0.9f);
+                        effectiveness = static_cast<int>(effectiveness * 0.85f); // 15% reduction
                     }
                 } else {
                     blocked = true;

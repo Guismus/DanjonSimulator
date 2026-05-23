@@ -217,6 +217,78 @@ void test_armor_blocking() {
     assert(result != -99);
 }
 
+void test_stat_penalties_rounding() {
+    Entity fighter("Fighter");
+    fighter.force = 10.25f;
+    fighter.vitesse = 10.0f;
+    
+    // No wounds: stats should be normal
+    assert(std::abs(fighter.getEffectiveForce() - 10.25f) < 0.001f);
+    assert(std::abs(fighter.getEffectiveVitesse() - 10.0f) < 0.001f);
+
+    // Apply a Stade 3 wound (-15% force & vitesse)
+    fighter.applyWound(3, PhysicalDamageType::Contondant);
+    // Effective force = 10.25 * 0.85 = 8.7125. Rounded up to 0.25: 8.75.
+    assert(std::abs(fighter.getEffectiveForce() - 8.75f) < 0.001f);
+    // Effective vitesse = 10.0 * 0.85 = 8.5. Rounded up: 8.5.
+    assert(std::abs(fighter.getEffectiveVitesse() - 8.5f) < 0.001f);
+
+    // Apply a Stade 4 wound (-30% force & vitesse)
+    fighter.wounds.clear();
+    fighter.applyWound(4, PhysicalDamageType::Contondant);
+    // Effective force = 10.25 * 0.70 = 7.175. Rounded up to 0.25: 7.25.
+    assert(std::abs(fighter.getEffectiveForce() - 7.25f) < 0.001f);
+}
+
+void test_parry_dodge() {
+    Entity attacker("Attacker");
+    Entity defender("Defender");
+    
+    attacker.stade = 1;
+    defender.stade = 1;
+    attacker.force = 10.0f;
+    defender.resistance = 10.0f;
+    defender.physicalReserve = 100.0f;
+
+    // Test Dodge: prepare dodge
+    CombatSystem::executeDodge(defender, 1.0f);
+    assert(defender.activeDodges == 1);
+    assert(defender.physicalReserve == 90.0f); // 100 - 10
+
+    // Execute attack: should be evaded (-98)
+    int result = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(result == -98);
+    assert(defender.activeDodges == 0);
+    assert(defender.wounds.empty());
+
+    // Test Parry: prepare parry
+    CombatSystem::executeParry(defender, 1.0f);
+    assert(defender.activeParries == 1);
+    assert(defender.physicalReserve == 82.5f); // 90 - 7.5
+
+    // Let's make attacker stronger so they deal positive damage
+    attacker.force = 15.0f; // diff at level 1: 5.0 -> effectiveness 5 (Domination)
+    // Execute attack: should be parried (effectiveness 5 reduced by 10% -> 4)
+    result = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(result == 4);
+    assert(defender.activeParries == 0);
+    assert(defender.wounds.size() == 1);
+    assert(defender.wounds[0].effectiveness == 4);
+
+    // Test Parry with metal shield vs Tranchant
+    defender.wounds.clear();
+    defender.passives.push_back("Bouclier en métal");
+    CombatSystem::executeParry(defender, 1.0f);
+    
+    Weapon sword{"Sword", WeaponType::Tranchant, WeaponWeight::Moyen, 100, 0};
+    attacker.weapon = sword;
+    
+    result = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(result == -97); // Parade bloquée
+    assert(defender.activeParries == 0);
+    assert(defender.wounds.empty());
+}
+
 int main() {
     // 1. Initialiser le DataStore avec les fichiers JSON
     if (!DataStore::getInstance().loadSystemData("data/diff_stats.json")) {
@@ -236,6 +308,8 @@ int main() {
     RUN_TEST(test_speed_free_actions);
     RUN_TEST(test_stamina_costs);
     RUN_TEST(test_armor_blocking);
+    RUN_TEST(test_stat_penalties_rounding);
+    RUN_TEST(test_parry_dodge);
 
     std::cout << "All core unit tests passed successfully!" << std::endl;
     return 0;
