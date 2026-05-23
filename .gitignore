@@ -16,3 +16,4 @@ Makefile
 DanjonSimulator_autogen
 aqtinstall.log
 test_core
+.DS_Store

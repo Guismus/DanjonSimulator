@@ -473,17 +473,47 @@ void RunPage::resolveTurn() {
     size_t secondQueued = secondActions->size();
     size_t maxActions = std::max(firstQueued, secondQueued);
 
+    // Phase 1 : Résolution de toutes les esquives et parades préparées (dans l'ordre de vitesse/alternance)
     for (size_t i = 0; i < maxActions; ++i) {
         if (i < firstQueued) {
             if (!first->isDead() && first->physicalReserve > 0) {
-                executeSingleAction(first, second, firstActions->at(i), i);
+                const auto& action = firstActions->at(i);
+                if (action.type == ActionType::Parry || action.type == ActionType::Dodge) {
+                    executeSingleAction(first, second, action, i);
+                }
             }
         }
         if (second->isDead() || second->physicalReserve <= 0 || first->isDead() || first->physicalReserve <= 0) break;
         
         if (i < secondQueued) {
             if (!second->isDead() && second->physicalReserve > 0) {
-                executeSingleAction(second, first, secondActions->at(i), i);
+                const auto& action = secondActions->at(i);
+                if (action.type == ActionType::Parry || action.type == ActionType::Dodge) {
+                    executeSingleAction(second, first, action, i);
+                }
+            }
+        }
+        if (first->isDead() || first->physicalReserve <= 0 || second->isDead() || second->physicalReserve <= 0) break;
+    }
+
+    // Phase 2 : Résolution de toutes les attaques (dans l'ordre de vitesse/alternance)
+    for (size_t i = 0; i < maxActions; ++i) {
+        if (i < firstQueued) {
+            if (!first->isDead() && first->physicalReserve > 0) {
+                const auto& action = firstActions->at(i);
+                if (action.type == ActionType::Attack) {
+                    executeSingleAction(first, second, action, i);
+                }
+            }
+        }
+        if (second->isDead() || second->physicalReserve <= 0 || first->isDead() || first->physicalReserve <= 0) break;
+        
+        if (i < secondQueued) {
+            if (!second->isDead() && second->physicalReserve > 0) {
+                const auto& action = secondActions->at(i);
+                if (action.type == ActionType::Attack) {
+                    executeSingleAction(second, first, action, i);
+                }
             }
         }
         if (first->isDead() || first->physicalReserve <= 0 || second->isDead() || second->physicalReserve <= 0) break;
