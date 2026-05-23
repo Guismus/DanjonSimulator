@@ -1,6 +1,6 @@
 /build
 /commande
-/scripts
+/mac_scripts
 /logs
 /.cache
 cmake_install.cmake

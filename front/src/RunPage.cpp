@@ -1,6 +1,14 @@
 #include "../include/RunPage.hpp"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
+#include <QProcess>
+#include <QTcpSocket>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QElapsedTimer>
+#include <QTimer>
 #include "../../back/data/DataStore.hpp"
 #include "../../back/systems/CombatSystem.hpp"
 #include <QDir>
@@ -41,13 +49,48 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     // --- Selection UI ---
     selectionWidget = new QWidget();
     QVBoxLayout* selLayout = new QVBoxLayout(selectionWidget);
-    selLayout->addWidget(new QLabel("Character 1:"));
-    char1Combo = new QComboBox();
-    selLayout->addWidget(char1Combo);
     
-    selLayout->addWidget(new QLabel("Character 2:"));
+    QGridLayout* grid = new QGridLayout();
+    
+    grid->addWidget(new QLabel("Combattant 1 :"), 0, 0);
+    char1Combo = new QComboBox();
+    grid->addWidget(char1Combo, 0, 1);
+    
+    grid->addWidget(new QLabel("Contrôle :"), 0, 2);
+    char1ModeCombo = new QComboBox();
+    char1ModeCombo->addItem("Manuel");
+    char1ModeCombo->addItem("Script (Python)");
+    char1ModeCombo->addItem("Externe (TCP)");
+    grid->addWidget(char1ModeCombo, 0, 3);
+    
+    grid->addWidget(new QLabel("Combattant 2 :"), 1, 0);
     char2Combo = new QComboBox();
-    selLayout->addWidget(char2Combo);
+    grid->addWidget(char2Combo, 1, 1);
+    
+    grid->addWidget(new QLabel("Contrôle :"), 1, 2);
+    char2ModeCombo = new QComboBox();
+    char2ModeCombo->addItem("Manuel");
+    char2ModeCombo->addItem("Script (Python)");
+    char2ModeCombo->addItem("Externe (TCP)");
+    grid->addWidget(char2ModeCombo, 1, 3);
+    
+    grid->addWidget(new QLabel("Chemin Script :"), 2, 0);
+    scriptPathEdit = new QLineEdit();
+    scriptPathEdit->setText("scripts/ai_agent.py");
+    grid->addWidget(scriptPathEdit, 2, 1, 1, 3);
+    
+    grid->addWidget(new QLabel("Serveur TCP :"), 3, 0);
+    tcpHostEdit = new QLineEdit();
+    tcpHostEdit->setText("127.0.0.1");
+    grid->addWidget(tcpHostEdit, 3, 1);
+    
+    grid->addWidget(new QLabel("Port :"), 3, 2);
+    tcpPortEdit = new QSpinBox();
+    tcpPortEdit->setRange(1, 65535);
+    tcpPortEdit->setValue(8080);
+    grid->addWidget(tcpPortEdit, 3, 3);
+    
+    selLayout->addLayout(grid);
     
     runButton = new QPushButton("Lancer le combat");
     selLayout->addWidget(runButton);
@@ -67,12 +110,14 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     p1AttackBtn = new QPushButton("Préparer Attaque");
     p1ParryBtn = new QPushButton("Préparer Parade");
     p1DodgeBtn = new QPushButton("Préparer Esquive");
+    p1PassBtn = new QPushButton("Finir le Tour");
     p1CancelBtn = new QPushButton("Annuler Action");
     f1Layout->addWidget(p1NameLabel);
     f1Layout->addWidget(p1HpLabel);
     f1Layout->addWidget(p1AttackBtn);
     f1Layout->addWidget(p1ParryBtn);
     f1Layout->addWidget(p1DodgeBtn);
+    f1Layout->addWidget(p1PassBtn);
     f1Layout->addWidget(p1CancelBtn);
     
     // Fighter 2 UI
@@ -83,12 +128,14 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     p2AttackBtn = new QPushButton("Préparer Attaque");
     p2ParryBtn = new QPushButton("Préparer Parade");
     p2DodgeBtn = new QPushButton("Préparer Esquive");
+    p2PassBtn = new QPushButton("Finir le Tour");
     p2CancelBtn = new QPushButton("Annuler Action");
     f2Layout->addWidget(p2NameLabel);
     f2Layout->addWidget(p2HpLabel);
     f2Layout->addWidget(p2AttackBtn);
     f2Layout->addWidget(p2ParryBtn);
     f2Layout->addWidget(p2DodgeBtn);
+    f2Layout->addWidget(p2PassBtn);
     f2Layout->addWidget(p2CancelBtn);
     
     fightersLayout->addLayout(f1Layout);
@@ -98,8 +145,6 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     QLabel* vsLabel = new QLabel("VS");
     vsLabel->setAlignment(Qt::AlignCenter);
     centerLayout->addWidget(vsLabel);
-    endTurnBtn = new QPushButton("Résoudre le Tour");
-    centerLayout->addWidget(endTurnBtn);
     fightersLayout->addLayout(centerLayout);
     
     fightersLayout->addStretch();
@@ -161,6 +206,7 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
         addActionP1(ActionType::Dodge);
     });
     connect(p1CancelBtn, &QPushButton::clicked, [this]() {
+        p1Finished = false;
         if (!p1Actions.empty()) p1Actions.pop_back();
         updateCombatUI();
     });
@@ -175,10 +221,21 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
         addActionP2(ActionType::Dodge);
     });
     connect(p2CancelBtn, &QPushButton::clicked, [this]() {
+        p2Finished = false;
         if (!p2Actions.empty()) p2Actions.pop_back();
         updateCombatUI();
     });
-    connect(endTurnBtn, &QPushButton::clicked, this, &RunPage::resolveTurn);
+
+    connect(p1PassBtn, &QPushButton::clicked, [this]() {
+        p1Finished = true;
+        updateCombatUI();
+        checkResolve();
+    });
+    connect(p2PassBtn, &QPushButton::clicked, [this]() {
+        p2Finished = true;
+        updateCombatUI();
+        checkResolve();
+    });
 
     loadEntities();
 }
@@ -227,17 +284,20 @@ void RunPage::startCombat() {
     p2FreeActions = 2 + (speedDiff < 0 ? -speedDiff : 0);
 
     currentTurn = 1;
+    p1Finished = false;
+    p2Finished = false;
     
     // Set buttons ready
     p1AttackBtn->setEnabled(true);
     p1ParryBtn->setEnabled(true);
     p1DodgeBtn->setEnabled(true);
+    p1PassBtn->setEnabled(true);
     p2AttackBtn->setEnabled(true);
     p2ParryBtn->setEnabled(true);
     p2DodgeBtn->setEnabled(true);
+    p2PassBtn->setEnabled(true);
     p1CancelBtn->setEnabled(false);
     p2CancelBtn->setEnabled(false);
-    endTurnBtn->setEnabled(true);
 
     selectionWidget->setVisible(false);
     combatWidget->setVisible(true);
@@ -245,6 +305,7 @@ void RunPage::startCombat() {
     combatLog->append("Le combat commence");
     
     updateCombatUI();
+    checkResolve();
 }
 
 void RunPage::updateCombatUI() {
@@ -351,22 +412,27 @@ void RunPage::updateCombatUI() {
             p1AttackBtn->setEnabled(false);
             p1ParryBtn->setEnabled(false);
             p1DodgeBtn->setEnabled(false);
+            p1PassBtn->setEnabled(false);
             p1CancelBtn->setEnabled(false);
             p2AttackBtn->setEnabled(false);
             p2ParryBtn->setEnabled(false);
             p2DodgeBtn->setEnabled(false);
+            p2PassBtn->setEnabled(false);
             p2CancelBtn->setEnabled(false);
-            endTurnBtn->setEnabled(false);
         } else {
-            endTurnBtn->setEnabled(!p1Actions.empty() || !p2Actions.empty());
-            p1AttackBtn->setEnabled(true);
-            p1ParryBtn->setEnabled(true);
-            p1DodgeBtn->setEnabled(true);
-            p2AttackBtn->setEnabled(true);
-            p2ParryBtn->setEnabled(true);
-            p2DodgeBtn->setEnabled(true);
-            p1CancelBtn->setEnabled(!p1Actions.empty());
-            p2CancelBtn->setEnabled(!p2Actions.empty());
+            bool p1Manual = (char1ModeCombo->currentIndex() == 0);
+            p1AttackBtn->setEnabled(p1Manual && !p1Finished);
+            p1ParryBtn->setEnabled(p1Manual && !p1Finished);
+            p1DodgeBtn->setEnabled(p1Manual && !p1Finished);
+            p1PassBtn->setEnabled(p1Manual && !p1Finished);
+            p1CancelBtn->setEnabled(p1Manual && (p1Finished || !p1Actions.empty()));
+
+            bool p2Manual = (char2ModeCombo->currentIndex() == 0);
+            p2AttackBtn->setEnabled(p2Manual && !p2Finished);
+            p2ParryBtn->setEnabled(p2Manual && !p2Finished);
+            p2DodgeBtn->setEnabled(p2Manual && !p2Finished);
+            p2PassBtn->setEnabled(p2Manual && !p2Finished);
+            p2CancelBtn->setEnabled(p2Manual && (p2Finished || !p2Actions.empty()));
             
             auto setBtnText = [](QPushButton* btnAttack, QPushButton* btnParry, QPushButton* btnDodge, const std::vector<QueuedAction>& actions, int freeCount) {
                 float multipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
@@ -391,6 +457,37 @@ void RunPage::updateCombatUI() {
 
 void RunPage::resolveTurn() {
     if (!fighter1 || !fighter2) return;
+
+    // Récupérer les modes de contrôle
+    ControlMode p1Mode = static_cast<ControlMode>(char1ModeCombo->currentIndex());
+    ControlMode p2Mode = static_cast<ControlMode>(char2ModeCombo->currentIndex());
+
+    // Déterminer l'ordre pour requêter les IA/scripts (la plus rapide décide en premier)
+    Entity* speedFirst = &(*fighter1);
+    Entity* speedSecond = &(*fighter2);
+    std::vector<QueuedAction>* firstActionsPtr = &p1Actions;
+    std::vector<QueuedAction>* secondActionsPtr = &p2Actions;
+    ControlMode firstMode = p1Mode;
+    ControlMode secondMode = p2Mode;
+    int firstFree = p1FreeActions;
+    int secondFree = p2FreeActions;
+
+    if (fighter2->getEffectiveVitesse() > fighter1->getEffectiveVitesse()) {
+        speedFirst = &(*fighter2);
+        speedSecond = &(*fighter1);
+        firstActionsPtr = &p2Actions;
+        secondActionsPtr = &p1Actions;
+        firstMode = p2Mode;
+        secondMode = p1Mode;
+        firstFree = p2FreeActions;
+        secondFree = p1FreeActions;
+    }
+
+    fetchAutomatedActions(*speedFirst, *firstActionsPtr, firstFree, firstMode);
+    fetchAutomatedActions(*speedSecond, *secondActionsPtr, secondFree, secondMode);
+
+    // Mettre à jour l'UI après que les IA ont choisi
+    updateCombatUI();
 
     QString msg = "\n--- Résolution du Tour " + QString::number(currentTurn) + " ---";
     combatLog->append(msg);
@@ -452,6 +549,10 @@ void RunPage::resolveTurn() {
             if (action.overclockMultiplier > 1.0f) logMsg += "[Surcadençage x" + QString::number(action.overclockMultiplier, 'f', 1) + "] ";
             CombatSystem::executeDodge(*attacker, action.overclockMultiplier);
             logMsg += "-> Prépare une esquive (évitera la prochaine attaque).";
+        } else if (action.type == ActionType::Magic) {
+            logMsg += "Magie (Action " + QString::number(actionIndex + 1) + ") ";
+            if (action.overclockMultiplier > 1.0f) logMsg += "[Surcadençage x" + QString::number(action.overclockMultiplier, 'f', 1) + "] ";
+            logMsg += "-> Tente de lancer une magie (Non implémenté dans le moteur de combat).";
         }
         
         combatLog->append(logMsg);
@@ -496,12 +597,12 @@ void RunPage::resolveTurn() {
         if (first->isDead() || first->physicalReserve <= 0 || second->isDead() || second->physicalReserve <= 0) break;
     }
 
-    // Phase 2 : Résolution de toutes les attaques (dans l'ordre de vitesse/alternance)
+    // Phase 2 : Résolution de toutes les attaques et magies (dans l'ordre de vitesse/alternance)
     for (size_t i = 0; i < maxActions; ++i) {
         if (i < firstQueued) {
             if (!first->isDead() && first->physicalReserve > 0) {
                 const auto& action = firstActions->at(i);
-                if (action.type == ActionType::Attack) {
+                if (action.type == ActionType::Attack || action.type == ActionType::Magic) {
                     executeSingleAction(first, second, action, i);
                 }
             }
@@ -511,7 +612,7 @@ void RunPage::resolveTurn() {
         if (i < secondQueued) {
             if (!second->isDead() && second->physicalReserve > 0) {
                 const auto& action = secondActions->at(i);
-                if (action.type == ActionType::Attack) {
+                if (action.type == ActionType::Attack || action.type == ActionType::Magic) {
                     executeSingleAction(second, first, action, i);
                 }
             }
@@ -540,6 +641,9 @@ void RunPage::resolveTurn() {
     
     p1Actions.clear();
     p2Actions.clear();
+    
+    p1Finished = false;
+    p2Finished = false;
     
     bool combatFinished = fighter1->isDead() || fighter2->isDead() || fighter1->physicalReserve <= 0 || fighter2->physicalReserve <= 0;
     if (combatFinished) {
@@ -571,6 +675,12 @@ void RunPage::resolveTurn() {
     }
     
     updateCombatUI();
+
+    if (!combatFinished) {
+        QTimer::singleShot(200, this, [this]() {
+            checkResolve();
+        });
+    }
 }
 
 void RunPage::saveCombatLog() {
@@ -589,5 +699,196 @@ void RunPage::saveCombatLog() {
         QTextStream out(&file);
         out << combatLog->toPlainText();
         file.close();
+    }
+}
+
+QJsonObject RunPage::serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions) {
+    QJsonObject obj;
+    obj["name"] = QString::fromStdString(entity.getName());
+    obj["blood"] = entity.blood;
+    obj["physical_reserve"] = entity.physicalReserve;
+    obj["max_physical_reserve"] = entity.maxPhysicalReserve;
+    obj["magic_reserve"] = entity.magicReserve;
+    obj["stade"] = entity.stade;
+    obj["rank"] = entity.rank;
+    obj["vitesse"] = entity.getEffectiveVitesse();
+    obj["force"] = entity.getEffectiveForce();
+    obj["resistance"] = entity.getEffectiveResistance();
+    obj["force_magique"] = entity.getEffectiveForceMagique();
+    obj["resistance_magique"] = entity.getEffectiveResistanceMagique();
+    
+    QJsonArray actionsArr;
+    for (const auto& act : queuedActions) {
+        if (act.type == ActionType::Attack) actionsArr.append("Attaquer");
+        else if (act.type == ActionType::Parry) actionsArr.append("Parer");
+        else if (act.type == ActionType::Dodge) actionsArr.append("Esquiver");
+        else if (act.type == ActionType::Magic) actionsArr.append("Magie");
+    }
+    obj["queued_actions"] = actionsArr;
+    return obj;
+}
+
+QJsonObject RunPage::serializeState(const Entity& active, const std::vector<QueuedAction>& activeActions,
+                                     const Entity& opponent, const std::vector<QueuedAction>& opponentActions) {
+    QJsonObject state;
+    state["active_character"] = serializeEntity(active, activeActions);
+    state["opponent_character"] = serializeEntity(opponent, opponentActions);
+    return state;
+}
+
+QString RunPage::queryScript(const QJsonObject& state) {
+    QString scriptPath = scriptPathEdit->text();
+    if (scriptPath.isEmpty()) {
+        scriptPath = "scripts/ai_agent.py";
+    }
+    
+    QJsonDocument doc(state);
+    QString jsonStr(doc.toJson(QJsonDocument::Compact));
+    
+    QProcess process;
+    QStringList arguments;
+    arguments << scriptPath << jsonStr;
+    
+    process.start("python3", arguments);
+    if (!process.waitForFinished(5000)) { // 5 seconds timeout for python script
+        process.kill();
+        combatLog->append("❌ [Script] Timeout lors de l'exécution du script Python.");
+        return "Passer";
+    }
+    
+    QByteArray output = process.readAllStandardOutput().trimmed();
+    QByteArray errOutput = process.readAllStandardError().trimmed();
+    
+    if (process.exitCode() != 0) {
+        combatLog->append("❌ [Script] Le script a échoué avec le code " + QString::number(process.exitCode()) + " : " + QString::fromUtf8(errOutput));
+        return "Passer";
+    }
+    
+    QJsonParseError parseError;
+    QJsonDocument respDoc = QJsonDocument::fromJson(output, &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        combatLog->append("❌ [Script] Erreur de parsing JSON de la réponse : " + parseError.errorString() + "\nStdout: " + QString::fromUtf8(output));
+        return "Passer";
+    }
+    
+    QJsonObject respObj = respDoc.object();
+    return respObj["action"].toString("Passer");
+}
+
+QString RunPage::queryTCP(const QJsonObject& state) {
+    QString host = tcpHostEdit->text();
+    int port = tcpPortEdit->value();
+    if (host.isEmpty()) host = "127.0.0.1";
+    
+    QTcpSocket socket;
+    socket.connectToHost(host, port);
+    if (!socket.waitForConnected(3000)) { // 3 seconds timeout to connect
+        combatLog->append("❌ [TCP] Impossible de se connecter au serveur " + host + ":" + QString::number(port));
+        return "Passer";
+    }
+    
+    QJsonDocument doc(state);
+    QByteArray data = doc.toJson(QJsonDocument::Compact) + "\n";
+    socket.write(data);
+    if (!socket.waitForBytesWritten(2000)) {
+        combatLog->append("❌ [TCP] Erreur d'écriture sur la socket.");
+        return "Passer";
+    }
+    
+    // Wait for response (up to 10 seconds total)
+    QByteArray responseData;
+    int remainingTimeMs = 10000;
+    QElapsedTimer timer;
+    timer.start();
+    
+    while (remainingTimeMs > 0) {
+        if (socket.waitForReadyRead(remainingTimeMs)) {
+            responseData += socket.readAll();
+            if (responseData.contains('\n')) {
+                break; // Received complete line
+            }
+        } else {
+            break; // Timeout or error
+        }
+        remainingTimeMs = 10000 - timer.elapsed();
+    }
+    
+    if (responseData.isEmpty()) {
+        combatLog->append("❌ [TCP] Timeout de 10 secondes dépassé ou aucune réponse reçue.");
+        return "Passer";
+    }
+    
+    // Clean and parse response
+    QByteArray line = responseData.split('\n').first().trimmed();
+    QJsonParseError parseError;
+    QJsonDocument respDoc = QJsonDocument::fromJson(line, &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        combatLog->append("❌ [TCP] Erreur de parsing JSON du serveur : " + parseError.errorString() + "\nBrut: " + QString::fromUtf8(line));
+        return "Passer";
+    }
+    
+    QJsonObject respObj = respDoc.object();
+    return respObj["action"].toString("Passer");
+}
+
+void RunPage::fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& actions, int freeActions, ControlMode mode) {
+    if (mode == ControlMode::Manual) return;
+    
+    actions.clear();
+    
+    // Get reference to opponent
+    Entity& opponent = (&entity == &(*fighter1)) ? (*fighter2) : (*fighter1);
+    const std::vector<QueuedAction>& opponentActions = (&entity == &(*fighter1)) ? p2Actions : p1Actions;
+    
+    float multipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
+    int maxTries = 10; // Prevent infinite loops
+    
+    for (int i = 0; i < maxTries; ++i) {
+        if (entity.isDead() || entity.physicalReserve <= 0) break;
+        
+        QJsonObject state = serializeState(entity, actions, opponent, opponentActions);
+        
+        QString actionStr;
+        if (mode == ControlMode::Script) {
+            actionStr = queryScript(state);
+        } else if (mode == ControlMode::TCP) {
+            actionStr = queryTCP(state);
+        }
+        
+        actionStr = actionStr.trimmed();
+        if (actionStr == "Passer" || actionStr == "Finir le tour" || actionStr.isEmpty()) {
+            break;
+        }
+        
+        ActionType type;
+        if (actionStr == "Attaquer") {
+            type = ActionType::Attack;
+        } else if (actionStr == "Parer") {
+            type = ActionType::Parry;
+        } else if (actionStr == "Esquiver") {
+            type = ActionType::Dodge;
+        } else if (actionStr == "Magie") {
+            type = ActionType::Magic;
+        } else {
+            break; // Unrecognized action
+        }
+        
+        float multiplier = 1.0f;
+        int queued = actions.size();
+        if (queued >= freeActions) {
+            int idx = queued - freeActions;
+            if (idx > 5) idx = 5;
+            multiplier = multipliers[idx];
+        }
+        
+        actions.push_back({type, multiplier});
+    }
+}
+
+void RunPage::checkResolve() {
+    bool p1FinishedActual = p1Finished || (char1ModeCombo->currentIndex() != 0);
+    bool p2FinishedActual = p2Finished || (char2ModeCombo->currentIndex() != 0);
+    if (p1FinishedActual && p2FinishedActual) {
+        resolveTurn();
     }
 }

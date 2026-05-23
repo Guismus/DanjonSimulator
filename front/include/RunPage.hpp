@@ -5,13 +5,23 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QTextEdit>
+#include <QLineEdit>
+#include <QSpinBox>
+#include <QJsonObject>
 #include <optional>
 #include "../../back/core/entity.hpp"
 
 enum class ActionType {
     Attack,
     Parry,
-    Dodge
+    Dodge,
+    Magic
+};
+
+enum class ControlMode {
+    Manual,
+    Script,
+    TCP
 };
 
 struct QueuedAction {
@@ -33,6 +43,11 @@ private:
     QWidget* selectionWidget;
     QComboBox* char1Combo;
     QComboBox* char2Combo;
+    QComboBox* char1ModeCombo;
+    QComboBox* char2ModeCombo;
+    QLineEdit* scriptPathEdit;
+    QLineEdit* tcpHostEdit;
+    QSpinBox* tcpPortEdit;
     QPushButton* runButton;
     
     // Combat UI
@@ -44,12 +59,13 @@ private:
     QPushButton* p1AttackBtn;
     QPushButton* p1ParryBtn;
     QPushButton* p1DodgeBtn;
+    QPushButton* p1PassBtn;
+    QPushButton* p2PassBtn;
     QPushButton* p1CancelBtn;
     QPushButton* p2AttackBtn;
     QPushButton* p2ParryBtn;
     QPushButton* p2DodgeBtn;
     QPushButton* p2CancelBtn;
-    QPushButton* endTurnBtn;
     QTextEdit* combatLog;
 
     std::optional<Entity> fighter1;
@@ -60,10 +76,20 @@ private:
     int p1FreeActions;
     int p2FreeActions;
     int currentTurn = 1;
+    bool p1Finished = false;
+    bool p2Finished = false;
 
     void loadEntities();
     void startCombat();
     void updateCombatUI();
     void resolveTurn();
     void saveCombatLog();
+    void checkResolve();
+
+    void fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& actions, int freeActions, ControlMode mode);
+    QString queryScript(const QJsonObject& state);
+    QString queryTCP(const QJsonObject& state);
+    QJsonObject serializeState(const Entity& active, const std::vector<QueuedAction>& activeActions,
+                               const Entity& opponent, const std::vector<QueuedAction>& opponentActions);
+    QJsonObject serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions);
 };
