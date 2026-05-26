@@ -1,0 +1,11 @@
+{
+    "name": "Ivar Draugrskarn",
+    "stade": 12,
+    "force": 25.0,
+    "resistance": 29.75,
+    "vitesse": 18.5,
+    "forceMagique": 10.0,
+    "resistanceMagique": 28.75,
+    "rank": "E",
+    "characterClass": "GUIDE"
+}

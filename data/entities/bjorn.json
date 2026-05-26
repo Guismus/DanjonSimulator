@@ -1,0 +1,11 @@
+{
+    "name": "Björn Sonfiane",
+    "stade": 1,
+    "force": 9.0,
+    "resistance": 10.0,
+    "vitesse": 7.5,
+    "forceMagique": 10.0,
+    "resistanceMagique": 9.5,
+    "rank": "None",
+    "characterClass": "AEGIS"
+}

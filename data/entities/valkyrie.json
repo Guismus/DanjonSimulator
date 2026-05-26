@@ -1,0 +1,11 @@
+{
+    "name": "Valkyrie Eldsjala",
+    "stade": 1,
+    "force": 9.25,
+    "resistance": 10.25,
+    "vitesse": 7.5,
+    "forceMagique": 10.0,
+    "resistanceMagique": 9.25,
+    "rank": "None",
+    "characterClass": "AEGIS"
+}

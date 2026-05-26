@@ -158,6 +158,20 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 }
                 entity.rank = rankVal;
                 
+                if (j.contains("characterClass") && j["characterClass"].is_string()) {
+                    entity.characterClass = j["characterClass"].get<std::string>();
+                } else if (j.contains("class") && j["class"].is_string()) {
+                    entity.characterClass = j["class"].get<std::string>();
+                }
+
+                if (j.contains("passives") && j["passives"].is_array()) {
+                    for (const auto& passive : j["passives"]) {
+                        if (passive.is_string()) {
+                            entity.passives.push_back(passive.get<std::string>());
+                        }
+                    }
+                }
+                
                 entity.force = j.value("force", 0.0f);
                 entity.resistance = j.value("resistance", 0.0f);
                 entity.vitesse = j.value("vitesse", 0.0f);
