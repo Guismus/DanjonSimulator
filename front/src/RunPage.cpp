@@ -871,7 +871,7 @@ void RunPage::saveCombatLog() {
     }
 }
 
-QJsonObject RunPage::serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions) {
+QJsonObject RunPage::serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions, int freeActions) {
     QJsonObject obj;
     obj["name"] = QString::fromStdString(entity.getName());
     obj["blood"] = entity.blood;
@@ -894,14 +894,19 @@ QJsonObject RunPage::serializeEntity(const Entity& entity, const std::vector<Que
         else if (act.type == ActionType::Magic) actionsArr.append("Magie");
     }
     obj["queued_actions"] = actionsArr;
+    obj["free_actions"] = freeActions;
     return obj;
 }
 
 QJsonObject RunPage::serializeState(const Entity& active, const std::vector<QueuedAction>& activeActions,
                                      const Entity& opponent, const std::vector<QueuedAction>& opponentActions) {
     QJsonObject state;
-    state["active_character"] = serializeEntity(active, activeActions);
-    state["opponent_character"] = serializeEntity(opponent, opponentActions);
+    
+    int activeFree = (&active == &(*fighter1)) ? p1FreeActions : p2FreeActions;
+    int oppFree = (&opponent == &(*fighter1)) ? p1FreeActions : p2FreeActions;
+
+    state["active_character"] = serializeEntity(active, activeActions, activeFree);
+    state["opponent_character"] = serializeEntity(opponent, opponentActions, oppFree);
     return state;
 }
 

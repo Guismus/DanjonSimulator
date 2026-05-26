@@ -98,5 +98,5 @@ private:
     QString queryTCP(const QJsonObject& state, int playerNum);
     QJsonObject serializeState(const Entity& active, const std::vector<QueuedAction>& activeActions,
                                const Entity& opponent, const std::vector<QueuedAction>& opponentActions);
-    QJsonObject serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions);
+    QJsonObject serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions, int freeActions);
 };
