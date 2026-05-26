@@ -6,10 +6,5 @@
     "vitesse": 26.25,
     "forceMagique": 10,
     "resistanceMagique": 19,
-    "rank": "E",
-    "equipement": {
-        "armure": {
-            "torse": "cote_de_mailles_en_parbelienne"
-        }
-    }
+    "rank": "E"
 }

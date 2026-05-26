@@ -75,5 +75,11 @@
       "Porter un objet lourd",
       "Apnée"
     ]
+  },
+  "multiplicateurs_degats": {
+    "mains_nu": 0.95,
+    "legere": 1.0,
+    "moyenne": 1.05,
+    "lourde": 1.1
   }
 }

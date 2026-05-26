@@ -1,0 +1,10 @@
+{
+  "nom": "Masse",
+  "type": "moyenne",
+  "type_de_degat": "Contondant",
+  "durabilite": 120,
+  "stats": {
+    "res": 15,
+    "res_magique": 8
+  }
+}

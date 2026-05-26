@@ -52,6 +52,13 @@ bool DataStore::loadEnergySystem(const std::string& filepath) {
                 rankThresholds[rank] = t;
             }
         }
+        if (j.contains("multiplicateurs_degats")) {
+            auto mults = j["multiplicateurs_degats"];
+            dmgMultMainsNu = mults.value("mains_nu", 0.95f);
+            dmgMultLegere = mults.value("legere", 1.0f);
+            dmgMultMoyenne = mults.value("moyenne", 1.05f);
+            dmgMultLourde = mults.value("lourde", 1.1f);
+        }
         return true;
     } catch (std::exception& e) {
         std::cerr << "Failed to parse energy system: " << e.what() << std::endl;
@@ -139,6 +146,7 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 std::string name = j.value("name", "Unknown");
                 Entity entity(name);
                 entity.stade = j.value("stade", j.value("level", 1));
+                entity.isMonster = j.value("isMonster", j.value("is_monster", j.value("monster", !j.contains("characterClass") && !j.contains("class"))));
                 
                 int rankVal = 1;
                 if (j.contains("rank")) {
@@ -191,34 +199,7 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                     entity.physicalReserve = t->maxReserve; // Start at max
                 }
 
-                std::string armorKey = "";
-                for (const char* eqKey : {"equipement", "equipment", "Equipement", "Equipment"}) {
-                    if (j.contains(eqKey) && j[eqKey].is_object()) {
-                        auto equip = j[eqKey];
-                        for (const char* arKey : {"armure", "armor", "Armure", "Armor"}) {
-                            if (equip.contains(arKey) && equip[arKey].is_object()) {
-                                auto armure = equip[arKey];
-                                for (const char* tsKey : {"torse", "chest", "Torse", "Chest"}) {
-                                    if (armure.contains(tsKey) && armure[tsKey].is_string()) {
-                                        armorKey = armure[tsKey].get<std::string>();
-                                        break;
-                                    }
-                                }
-                            }
-                            if (!armorKey.empty()) break;
-                        }
-                    }
-                    if (!armorKey.empty()) break;
-                }
-                
-                if (!armorKey.empty()) {
-                    auto armorIt = armorTemplates.find(armorKey);
-                    if (armorIt != armorTemplates.end()) {
-                        entity.armor = armorIt->second;
-                    } else {
-                        std::cerr << "Armor template not found: " << armorKey << std::endl;
-                    }
-                }
+
 
                 entityTemplates.emplace(name, entity);
             } catch (json::parse_error& e) {
@@ -244,4 +225,103 @@ std::vector<std::string> DataStore::getAvailableEntityNames() const {
         names.push_back(pair.first);
     }
     return names;
+}
+
+bool DataStore::loadWeapons(const std::string& directoryPath) {
+    if (!fs::exists(directoryPath)) {
+        std::cerr << "Weapon directory does not exist: " << directoryPath << std::endl;
+        return false;
+    }
+    bool success = true;
+    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+        if (entry.path().extension() == ".json") {
+            std::ifstream file(entry.path());
+            if (!file.is_open()) {
+                std::cerr << "Failed to open weapon file: " << entry.path() << std::endl;
+                success = false;
+                continue;
+            }
+            try {
+                json j;
+                file >> j;
+                
+                Weapon weapon;
+                weapon.name = j.value("nom", j.value("name", "Unknown"));
+                
+                std::string typeStr = j.value("type", "légère");
+                if (typeStr == "moyenne" || typeStr == "Moyenne" || typeStr == "moyen" || typeStr == "Moyen") {
+                    weapon.type = WeaponWeight::Moyen;
+                } else if (typeStr == "lourde" || typeStr == "Lourde" || typeStr == "lourd" || typeStr == "Lourd") {
+                    weapon.type = WeaponWeight::Lourd;
+                } else {
+                    weapon.type = WeaponWeight::Leger;
+                }
+                
+                std::string dmgTypeStr = j.value("type_de_degat", j.value("type de degat", j.value("damageType", j.value("damage_type", "Tranchant"))));
+                if (dmgTypeStr == "Contondant" || dmgTypeStr == "contondant") {
+                    weapon.damageType = PhysicalDamageType::Contondant;
+                } else if (dmgTypeStr == "Tranchant" || dmgTypeStr == "tranchant") {
+                    weapon.damageType = PhysicalDamageType::Tranchant;
+                } else {
+                    weapon.damageType = PhysicalDamageType::Neutre;
+                }
+                
+                weapon.durability = j.value("durabilite", j.value("durability", 100));
+                weapon.maxDurability = weapon.durability;
+                
+                int res = 0;
+                int resMagique = 0;
+                if (j.contains("stats")) {
+                    res = j["stats"].value("res", 0);
+                    resMagique = j["stats"].value("res_magique", j["stats"].value("resMagique", 0));
+                } else {
+                    res = j.value("res", 0);
+                    resMagique = j.value("res_magique", j.value("resMagique", 0));
+                }
+                weapon.res = res;
+                weapon.resMagique = resMagique;
+                
+                std::string key = entry.path().stem().string();
+                weaponTemplates[key] = weapon;
+            } catch (json::parse_error& e) {
+                std::cerr << "JSON parse error in weapon " << entry.path() << ": " << e.what() << std::endl;
+                success = false;
+            }
+        }
+    }
+    return success;
+}
+
+std::vector<std::string> DataStore::getAvailableWeaponNames() const {
+    std::vector<std::string> names;
+    for (const auto& pair : weaponTemplates) {
+        names.push_back(pair.second.name);
+    }
+    return names;
+}
+
+std::vector<std::string> DataStore::getAvailableArmorNames() const {
+    std::vector<std::string> names;
+    for (const auto& pair : armorTemplates) {
+        names.push_back(pair.second.name);
+    }
+    return names;
+}
+
+std::optional<Weapon> DataStore::getWeaponTemplate(const std::string& name) const {
+    for (const auto& pair : weaponTemplates) {
+        if (pair.second.name == name) {
+            return pair.second;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<Armor> DataStore::getArmorTemplate(const std::string& name) const {
+    for (const auto& pair : armorTemplates) {
+        if (pair.second.name == name) {
+            return pair.second;
+        }
+    }
+    return std::nullopt;
 }

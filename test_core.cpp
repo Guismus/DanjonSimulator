@@ -169,19 +169,19 @@ void test_stamina_costs() {
     assert(std::abs(attacker.physicalReserve - (400.0f - 7.5f)) < 0.001f);
 
     // Equip light weapon (cost = 7.5)
-    Weapon lightWeapon{"Light Sword", WeaponType::Tranchant, WeaponWeight::Leger, 100, 0};
+    Weapon lightWeapon{"Light Sword", WeaponWeight::Leger, PhysicalDamageType::Tranchant, 100, 100, 10, 5};
     attacker.weapon = lightWeapon;
     CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(std::abs(attacker.physicalReserve - (392.5f - 7.5f)) < 0.001f);
 
     // Equip medium weapon (cost = 10.0)
-    Weapon medWeapon{"Mace", WeaponType::Contondant, WeaponWeight::Moyen, 100, 0};
+    Weapon medWeapon{"Mace", WeaponWeight::Moyen, PhysicalDamageType::Contondant, 100, 100, 15, 8};
     attacker.weapon = medWeapon;
     CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(std::abs(attacker.physicalReserve - (385.0f - 10.0f)) < 0.001f);
 
     // Equip heavy weapon (cost = 12.5)
-    Weapon heavyWeapon{"Greatsword", WeaponType::Tranchant, WeaponWeight::Lourd, 100, 0};
+    Weapon heavyWeapon{"Greatsword", WeaponWeight::Lourd, PhysicalDamageType::Tranchant, 100, 100, 20, 10};
     attacker.weapon = heavyWeapon;
     // Overclock with multiplier 2.3f
     CombatSystem::executeAttack(attacker, defender, 2.3f);
@@ -203,7 +203,7 @@ void test_armor_blocking() {
     defender.armor = mineralArmor;
 
     // Attack with tranchant weapon (should be BLOCKED)
-    Weapon sword{"Sword", WeaponType::Tranchant, WeaponWeight::Moyen, 100, 0};
+    Weapon sword{"Sword", WeaponWeight::Moyen, PhysicalDamageType::Tranchant, 100, 100, 15, 8};
     attacker.weapon = sword;
     
     int result = CombatSystem::executeAttack(attacker, defender, 1.0f);
@@ -211,7 +211,7 @@ void test_armor_blocking() {
     assert(defender.wounds.empty());
 
     // Attack with contondant weapon (should hit)
-    Weapon hammer{"Hammer", WeaponType::Contondant, WeaponWeight::Moyen, 100, 0};
+    Weapon hammer{"Hammer", WeaponWeight::Moyen, PhysicalDamageType::Contondant, 100, 100, 15, 8};
     attacker.weapon = hammer;
     result = CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(result != -99);
@@ -268,6 +268,8 @@ void test_parry_dodge() {
 
     // Let's make attacker stronger so they deal positive damage
     attacker.force = 15.0f; // diff at level 1: 5.0 -> effectiveness 5 (Domination)
+    Weapon lightWeapon{"Light Sword", WeaponWeight::Leger, PhysicalDamageType::Tranchant, 100, 100, 10, 5};
+    attacker.weapon = lightWeapon;
     // Execute attack: should be parried (effectiveness 5 reduced by 10% -> 4)
     result = CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(result == 4);
@@ -280,13 +282,95 @@ void test_parry_dodge() {
     defender.passives.push_back("Bouclier en métal");
     CombatSystem::executeParry(defender, 1.0f);
     
-    Weapon sword{"Sword", WeaponType::Tranchant, WeaponWeight::Moyen, 100, 0};
+    Weapon sword{"Sword", WeaponWeight::Moyen, PhysicalDamageType::Tranchant, 100, 100, 15, 8};
     attacker.weapon = sword;
     
     result = CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(result == -97); // Parade bloquée
     assert(defender.activeParries == 0);
     assert(defender.wounds.empty());
+}
+
+void test_equipment_loading() {
+    assert(DataStore::getInstance().loadWeapons("data/Equipement/Arme"));
+    assert(DataStore::getInstance().loadArmors("data/Equipement/Armure"));
+
+    auto weapons = DataStore::getInstance().getAvailableWeaponNames();
+    assert(!weapons.empty());
+    
+    // Check espadon
+    auto espadon = DataStore::getInstance().getWeaponTemplate("Espadon");
+    assert(espadon.has_value());
+    assert(espadon->name == "Espadon");
+    assert(espadon->type == WeaponWeight::Lourd);
+    assert(espadon->damageType == PhysicalDamageType::Tranchant);
+    assert(espadon->durability == 150);
+
+    auto armors = DataStore::getInstance().getAvailableArmorNames();
+    assert(!armors.empty());
+    auto maille = DataStore::getInstance().getArmorTemplate("cote de mailles en parbélienne");
+    assert(maille.has_value());
+    assert(maille->name == "cote de mailles en parbélienne");
+    assert(maille->material == ArmorMaterial::Mineral);
+    assert(maille->durability == 36);
+}
+
+void test_weapon_durability_and_multipliers() {
+    Entity attacker("Attacker");
+    Entity defender("Defender");
+    attacker.stade = 1;
+    defender.stade = 1;
+    attacker.force = 10.0f;
+    defender.resistance = 10.0f;
+    attacker.maxPhysicalReserve = 100.0f;
+    attacker.physicalReserve = 100.0f;
+
+    // Test 1: Bare-hands (no weapon, not monster)
+    // Damage multiplier = x0.95. raw effectiveness = 0. 0 * 0.95 = 0.
+    // Stamina cost = 7.5
+    int res = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(res == 0);
+    assert(std::abs(attacker.physicalReserve - 92.5f) < 0.001f);
+
+    // Test 2: Monster bare-hands
+    // Damage multiplier = x1.0. raw effectiveness = 0. 0 * 1 = 0.
+    // Stamina cost = 7.5
+    attacker.isMonster = true;
+    attacker.physicalReserve = 100.0f;
+    res = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(res == 0);
+    assert(std::abs(attacker.physicalReserve - 92.5f) < 0.001f);
+    attacker.isMonster = false;
+
+    // Test 3: Weapon Durability reduction
+    // Weapon has res = 10. Attacker has force = 10.
+    // refWeaponLevel = (10 < 10) ? 1 : 1 -> 1.
+    // eff_weapon = calculateStatDifference(10, 10, 1) = 0.
+    // durabilityLoss for eff_weapon=0 is 5.
+    // Weapon starts at 10 durability. It should end at 5.
+    Weapon weakWeapon{"Weak Sword", WeaponWeight::Leger, PhysicalDamageType::Tranchant, 10, 10, 10, 5};
+    attacker.weapon = weakWeapon;
+    attacker.physicalReserve = 100.0f;
+    res = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(attacker.weapon->durability == 5);
+    assert(std::abs(attacker.physicalReserve - 92.5f) < 0.001f);
+
+    // Test 4: Weapon Breakage (durability falls to 0)
+    // Next attack: eff_weapon = 0. durabilityLoss = 5.
+    // Durability should fall to 0.
+    res = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(attacker.weapon->durability == 0);
+
+    // Test 5: Revert to bare-hands when broken
+    // Now that weapon has 0 durability:
+    // Stamina cost should be 7.5 (Pugilat/bare-hands) instead of 12.5 (if it was a lourd weapon)
+    // Damage multiplier should be x0.95.
+    Weapon brokenHeavy{"Broken Greatsword", WeaponWeight::Lourd, PhysicalDamageType::Tranchant, 0, 150, 20, 10};
+    attacker.weapon = brokenHeavy;
+    attacker.physicalReserve = 100.0f;
+    // Attack: cost should be 7.5 because weapon is broken!
+    res = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(std::abs(attacker.physicalReserve - 92.5f) < 0.001f); // 100 - 7.5 = 92.5
 }
 
 int main() {
@@ -310,6 +394,8 @@ int main() {
     RUN_TEST(test_armor_blocking);
     RUN_TEST(test_stat_penalties_rounding);
     RUN_TEST(test_parry_dodge);
+    RUN_TEST(test_equipment_loading);
+    RUN_TEST(test_weapon_durability_and_multipliers);
 
     std::cout << "All core unit tests passed successfully!" << std::endl;
     return 0;

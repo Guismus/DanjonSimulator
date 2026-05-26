@@ -1,0 +1,10 @@
+{
+  "nom": "Espadon",
+  "type": "lourde",
+  "type_de_degat": "Tranchant",
+  "durabilite": 150,
+  "stats": {
+    "res": 20,
+    "res_magique": 10
+  }
+}

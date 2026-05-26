@@ -1,0 +1,10 @@
+{
+  "nom": "Épée légère",
+  "type": "légère",
+  "type_de_degat": "Tranchant",
+  "durabilite": 100,
+  "stats": {
+    "res": 10,
+    "res_magique": 5
+  }
+}

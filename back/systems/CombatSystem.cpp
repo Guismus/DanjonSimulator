@@ -1,4 +1,5 @@
 #include "CombatSystem.hpp"
+#include "../data/DataStore.hpp"
 #include <algorithm>
 #include <iostream>
 #include <cmath>
@@ -54,15 +55,25 @@ void CombatSystem::executeDodge(Entity& character, float enduranceMultiplier) {
 int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier) {
     // Cost in endurance per attack (Pugilat by default = 7.5f)
     float cost = 7.5f; 
+    float multiplier = 1.0f;
     
-    if (attacker.weapon.has_value()) {
-        if (attacker.weapon->weight == WeaponWeight::Leger) {
+    if (attacker.isMonster) {
+        multiplier = 1.0f;
+        cost = 7.5f;
+    } else if (attacker.weapon.has_value() && attacker.weapon->durability > 0) {
+        if (attacker.weapon->type == WeaponWeight::Leger) {
+            multiplier = DataStore::getInstance().getDmgMultLegere();
             cost = 7.5f;
-        } else if (attacker.weapon->weight == WeaponWeight::Moyen) {
+        } else if (attacker.weapon->type == WeaponWeight::Moyen) {
+            multiplier = DataStore::getInstance().getDmgMultMoyenne();
             cost = 10.0f;
-        } else if (attacker.weapon->weight == WeaponWeight::Lourd) {
+        } else if (attacker.weapon->type == WeaponWeight::Lourd) {
+            multiplier = DataStore::getInstance().getDmgMultLourde();
             cost = 12.5f;
         }
+    } else {
+        multiplier = DataStore::getInstance().getDmgMultMainsNu();
+        cost = 7.5f;
     }
 
     cost *= enduranceMultiplier;
@@ -81,11 +92,49 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
     float attForce = attacker.getEffectiveForce();
     float defRes = defender.getEffectiveResistance();
 
+    // Weapon Durability reduction
+    if (attacker.weapon.has_value() && attacker.weapon->durability > 0) {
+        auto& weapon = attacker.weapon.value();
+        int refWeaponLevel = (attForce < weapon.res) ? attacker.stade : defender.stade;
+        int eff_weapon = calculateStatDifference(attForce, weapon.res, refWeaponLevel);
+        
+        int durabilityLoss = 0;
+        if (eff_weapon <= -5) {
+            durabilityLoss = 0;
+        } else if (eff_weapon == -4) {
+            durabilityLoss = 1;
+        } else if (eff_weapon == -3) {
+            durabilityLoss = 2;
+        } else if (eff_weapon == -2) {
+            durabilityLoss = 3;
+        } else if (eff_weapon == -1) {
+            durabilityLoss = 4;
+        } else if (eff_weapon == 0) {
+            durabilityLoss = 5;
+        } else if (eff_weapon == 1) {
+            durabilityLoss = 6;
+        } else if (eff_weapon == 2) {
+            durabilityLoss = 7;
+        } else if (eff_weapon == 3) {
+            durabilityLoss = 8;
+        } else if (eff_weapon == 4) {
+            durabilityLoss = 9;
+        } else { // eff_weapon >= 5
+            durabilityLoss = weapon.durability;
+        }
+        weapon.durability = std::max(0, weapon.durability - durabilityLoss);
+    }
+
     // Determine which character has the lowest stat involved (Force vs Resistance)
     // and use their level as reference for the calculation
     int refLevel = (attForce < defRes) ? attacker.stade : defender.stade;
     
     int effectiveness = calculateStatDifference(attForce, defRes, refLevel);
+
+    // Apply weapon damage multiplier
+    if (effectiveness >= 0) {
+        effectiveness = static_cast<int>(effectiveness * multiplier);
+    }
     
     // Check Parry
     bool parried = false;

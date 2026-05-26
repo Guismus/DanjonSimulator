@@ -45,9 +45,16 @@ private:
     QComboBox* char2Combo;
     QComboBox* char1ModeCombo;
     QComboBox* char2ModeCombo;
-    QLineEdit* scriptPathEdit;
-    QLineEdit* tcpHostEdit;
-    QSpinBox* tcpPortEdit;
+    QComboBox* char1WeaponCombo;
+    QComboBox* char2WeaponCombo;
+    QComboBox* char1ArmorCombo;
+    QComboBox* char2ArmorCombo;
+    QLineEdit* scriptPathEdit1;
+    QLineEdit* scriptPathEdit2;
+    QLineEdit* tcpHostEdit1;
+    QLineEdit* tcpHostEdit2;
+    QSpinBox* tcpPortEdit1;
+    QSpinBox* tcpPortEdit2;
     QPushButton* runButton;
     
     // Combat UI
@@ -86,9 +93,9 @@ private:
     void saveCombatLog();
     void checkResolve();
 
-    void fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& actions, int freeActions, ControlMode mode);
-    QString queryScript(const QJsonObject& state);
-    QString queryTCP(const QJsonObject& state);
+    void fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& actions, int freeActions, ControlMode mode, int playerNum);
+    QString queryScript(const QJsonObject& state, int playerNum);
+    QString queryTCP(const QJsonObject& state, int playerNum);
     QJsonObject serializeState(const Entity& active, const std::vector<QueuedAction>& activeActions,
                                const Entity& opponent, const std::vector<QueuedAction>& opponentActions);
     QJsonObject serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions);

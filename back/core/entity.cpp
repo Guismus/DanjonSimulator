@@ -3,7 +3,7 @@
 #include <cmath>
 
 Entity::Entity(const std::string& name)
-    : name(name), stade(1), rank(1),
+    : name(name), stade(1), rank(1), isMonster(false),
       force(0.0f), resistance(0.0f), vitesse(0.0f), forceMagique(0.0f), resistanceMagique(0.0f),
       blood(32.0f), physicalReserve(0.0f), maxPhysicalReserve(0.0f), magicReserve(0.0f),
       activeParries(0), activeDodges(0),
@@ -69,9 +69,8 @@ std::string Entity::getPhysicalState() const {
 }
 
 PhysicalDamageType Entity::getActiveDamageType() const {
-    if (weapon.has_value()) {
-        if (weapon->type == WeaponType::Tranchant) return PhysicalDamageType::Tranchant;
-        if (weapon->type == WeaponType::Contondant) return PhysicalDamageType::Contondant;
+    if (weapon.has_value() && weapon->durability > 0) {
+        return weapon->damageType;
     }
     return physicalDamageType;
 }

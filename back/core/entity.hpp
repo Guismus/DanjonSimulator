@@ -7,11 +7,6 @@
 
 
 
-enum class WeaponType {
-    Tranchant,
-    Contondant
-};
-
 enum class PhysicalDamageType {
     Neutre,
     Contondant,
@@ -32,10 +27,12 @@ enum class ArmorMaterial {
 
 struct Weapon {
     std::string name;
-    WeaponType type;
-    WeaponWeight weight;
+    WeaponWeight type;
+    PhysicalDamageType damageType;
     int durability;
-    int baseDamageMod;
+    int maxDurability;
+    int res;
+    int resMagique;
 };
 
 struct Armor {
@@ -74,6 +71,7 @@ public:
     // Stats
     int stade;
     int rank;
+    bool isMonster = false;
 
     float force;
     float resistance;

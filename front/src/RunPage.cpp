@@ -52,43 +52,110 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     
     QGridLayout* grid = new QGridLayout();
     
+    // Fighter 1 config
     grid->addWidget(new QLabel("Combattant 1 :"), 0, 0);
     char1Combo = new QComboBox();
     grid->addWidget(char1Combo, 0, 1);
     
-    grid->addWidget(new QLabel("Contrôle :"), 0, 2);
+    grid->addWidget(new QLabel("Contrôle 1 :"), 1, 0);
     char1ModeCombo = new QComboBox();
     char1ModeCombo->addItem("Manuel");
     char1ModeCombo->addItem("Script (Python)");
     char1ModeCombo->addItem("Externe (TCP)");
-    grid->addWidget(char1ModeCombo, 0, 3);
+    grid->addWidget(char1ModeCombo, 1, 1);
     
-    grid->addWidget(new QLabel("Combattant 2 :"), 1, 0);
+    grid->addWidget(new QLabel("Arme 1 :"), 2, 0);
+    char1WeaponCombo = new QComboBox();
+    grid->addWidget(char1WeaponCombo, 2, 1);
+    
+    grid->addWidget(new QLabel("Armure 1 :"), 3, 0);
+    char1ArmorCombo = new QComboBox();
+    grid->addWidget(char1ArmorCombo, 3, 1);
+    
+    QLabel* scriptPathLabel1 = new QLabel("Script 1 :");
+    grid->addWidget(scriptPathLabel1, 4, 0);
+    scriptPathEdit1 = new QLineEdit();
+    scriptPathEdit1->setText("scripts/ai_agent.py");
+    grid->addWidget(scriptPathEdit1, 4, 1);
+    
+    QLabel* tcpHostLabel1 = new QLabel("TCP Hôte 1 :");
+    grid->addWidget(tcpHostLabel1, 5, 0);
+    tcpHostEdit1 = new QLineEdit();
+    tcpHostEdit1->setText("127.0.0.1");
+    grid->addWidget(tcpHostEdit1, 5, 1);
+    
+    QLabel* tcpPortLabel1 = new QLabel("TCP Port 1 :");
+    grid->addWidget(tcpPortLabel1, 6, 0);
+    tcpPortEdit1 = new QSpinBox();
+    tcpPortEdit1->setRange(1, 65535);
+    tcpPortEdit1->setValue(8080);
+    grid->addWidget(tcpPortEdit1, 6, 1);
+
+    // Fighter 2 config
+    grid->addWidget(new QLabel("Combattant 2 :"), 0, 2);
     char2Combo = new QComboBox();
-    grid->addWidget(char2Combo, 1, 1);
+    grid->addWidget(char2Combo, 0, 3);
     
-    grid->addWidget(new QLabel("Contrôle :"), 1, 2);
+    grid->addWidget(new QLabel("Contrôle 2 :"), 1, 2);
     char2ModeCombo = new QComboBox();
     char2ModeCombo->addItem("Manuel");
     char2ModeCombo->addItem("Script (Python)");
     char2ModeCombo->addItem("Externe (TCP)");
     grid->addWidget(char2ModeCombo, 1, 3);
     
-    grid->addWidget(new QLabel("Chemin Script :"), 2, 0);
-    scriptPathEdit = new QLineEdit();
-    scriptPathEdit->setText("scripts/ai_agent.py");
-    grid->addWidget(scriptPathEdit, 2, 1, 1, 3);
+    grid->addWidget(new QLabel("Arme 2 :"), 2, 2);
+    char2WeaponCombo = new QComboBox();
+    grid->addWidget(char2WeaponCombo, 2, 3);
     
-    grid->addWidget(new QLabel("Serveur TCP :"), 3, 0);
-    tcpHostEdit = new QLineEdit();
-    tcpHostEdit->setText("127.0.0.1");
-    grid->addWidget(tcpHostEdit, 3, 1);
+    grid->addWidget(new QLabel("Armure 2 :"), 3, 2);
+    char2ArmorCombo = new QComboBox();
+    grid->addWidget(char2ArmorCombo, 3, 3);
     
-    grid->addWidget(new QLabel("Port :"), 3, 2);
-    tcpPortEdit = new QSpinBox();
-    tcpPortEdit->setRange(1, 65535);
-    tcpPortEdit->setValue(8080);
-    grid->addWidget(tcpPortEdit, 3, 3);
+    QLabel* scriptPathLabel2 = new QLabel("Script 2 :");
+    grid->addWidget(scriptPathLabel2, 4, 2);
+    scriptPathEdit2 = new QLineEdit();
+    scriptPathEdit2->setText("scripts/ai_agent.py");
+    grid->addWidget(scriptPathEdit2, 4, 3);
+    
+    QLabel* tcpHostLabel2 = new QLabel("TCP Hôte 2 :");
+    grid->addWidget(tcpHostLabel2, 5, 2);
+    tcpHostEdit2 = new QLineEdit();
+    tcpHostEdit2->setText("127.0.0.1");
+    grid->addWidget(tcpHostEdit2, 5, 3);
+    
+    QLabel* tcpPortLabel2 = new QLabel("TCP Port 2 : ");
+    grid->addWidget(tcpPortLabel2, 6, 2);
+    tcpPortEdit2 = new QSpinBox();
+    tcpPortEdit2->setRange(1, 65535);
+    tcpPortEdit2->setValue(8080);
+    grid->addWidget(tcpPortEdit2, 6, 3);
+
+    // Connect mode toggles
+    auto updateP1ModeVisibility = [this, scriptPathLabel1, tcpHostLabel1, tcpPortLabel1](int index) {
+        bool isScript = (index == 1);
+        bool isTcp = (index == 2);
+        scriptPathLabel1->setVisible(isScript);
+        scriptPathEdit1->setVisible(isScript);
+        tcpHostLabel1->setVisible(isTcp);
+        tcpHostEdit1->setVisible(isTcp);
+        tcpPortLabel1->setVisible(isTcp);
+        tcpPortEdit1->setVisible(isTcp);
+    };
+    connect(char1ModeCombo, &QComboBox::currentIndexChanged, updateP1ModeVisibility);
+    updateP1ModeVisibility(char1ModeCombo->currentIndex());
+
+    auto updateP2ModeVisibility = [this, scriptPathLabel2, tcpHostLabel2, tcpPortLabel2](int index) {
+        bool isScript = (index == 1);
+        bool isTcp = (index == 2);
+        scriptPathLabel2->setVisible(isScript);
+        scriptPathEdit2->setVisible(isScript);
+        tcpHostLabel2->setVisible(isTcp);
+        tcpHostEdit2->setVisible(isTcp);
+        tcpPortLabel2->setVisible(isTcp);
+        tcpPortEdit2->setVisible(isTcp);
+    };
+    connect(char2ModeCombo, &QComboBox::currentIndexChanged, updateP2ModeVisibility);
+    updateP2ModeVisibility(char2ModeCombo->currentIndex());
     
     selLayout->addLayout(grid);
     
@@ -241,7 +308,6 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
 }
 
 void RunPage::loadEntities() {
-    // For testing, let's inject two dummy entities if the datastore is empty
     auto names = DataStore::getInstance().getAvailableEntityNames();
     if (names.empty()) {
         char1Combo->addItem("Guerrier (Test)");
@@ -251,6 +317,24 @@ void RunPage::loadEntities() {
             char1Combo->addItem(QString::fromStdString(name));
             char2Combo->addItem(QString::fromStdString(name));
         }
+    }
+
+    // Populate weapons
+    char1WeaponCombo->addItem("Aucune");
+    char2WeaponCombo->addItem("Aucune");
+    auto weaponNames = DataStore::getInstance().getAvailableWeaponNames();
+    for (const auto& wName : weaponNames) {
+        char1WeaponCombo->addItem(QString::fromStdString(wName));
+        char2WeaponCombo->addItem(QString::fromStdString(wName));
+    }
+
+    // Populate armors
+    char1ArmorCombo->addItem("Aucune");
+    char2ArmorCombo->addItem("Aucune");
+    auto armorNames = DataStore::getInstance().getAvailableArmorNames();
+    for (const auto& aName : armorNames) {
+        char1ArmorCombo->addItem(QString::fromStdString(aName));
+        char2ArmorCombo->addItem(QString::fromStdString(aName));
     }
 }
 
@@ -268,6 +352,42 @@ void RunPage::startCombat() {
     // Give them some default stats for testing if they are new
     if (!opt1) { fighter1->force = 10.0f; fighter1->blood = 32.0f; fighter1->stade = 1; }
     if (!opt2) { fighter2->force = 8.0f; fighter2->blood = 32.0f; fighter2->stade = 1; }
+
+    // Assign Weapon 1
+    QString w1 = char1WeaponCombo->currentText();
+    if (w1 != "Aucune") {
+        auto wOpt = DataStore::getInstance().getWeaponTemplate(w1.toStdString());
+        if (wOpt) fighter1->weapon = wOpt;
+    } else {
+        fighter1->weapon = std::nullopt;
+    }
+
+    // Assign Armor 1
+    QString a1 = char1ArmorCombo->currentText();
+    if (a1 != "Aucune") {
+        auto aOpt = DataStore::getInstance().getArmorTemplate(a1.toStdString());
+        if (aOpt) fighter1->armor = aOpt;
+    } else {
+        fighter1->armor = std::nullopt;
+    }
+
+    // Assign Weapon 2
+    QString w2 = char2WeaponCombo->currentText();
+    if (w2 != "Aucune") {
+        auto wOpt = DataStore::getInstance().getWeaponTemplate(w2.toStdString());
+        if (wOpt) fighter2->weapon = wOpt;
+    } else {
+        fighter2->weapon = std::nullopt;
+    }
+
+    // Assign Armor 2
+    QString a2 = char2ArmorCombo->currentText();
+    if (a2 != "Aucune") {
+        auto aOpt = DataStore::getInstance().getArmorTemplate(a2.toStdString());
+        if (aOpt) fighter2->armor = aOpt;
+    } else {
+        fighter2->armor = std::nullopt;
+    }
     
     // Reset damage (wounds vector)
     fighter1->wounds.clear();
@@ -341,6 +461,17 @@ void RunPage::updateCombatUI() {
                     armorInfo += " [ROMPUE]";
                 }
             }
+            QString weaponInfo = "Arme : Aucune";
+            if (fighter1->weapon.has_value()) {
+                const auto& weapon = fighter1->weapon.value();
+                weaponInfo = QString("Arme : %1 (Durabilité : %2/%3)")
+                             .arg(QString::fromStdString(weapon.name))
+                             .arg(weapon.durability)
+                             .arg(weapon.maxDurability);
+                if (weapon.durability <= 0) {
+                    weaponInfo += " [ROMPUE]";
+                }
+            }
             auto formatActions = [](const std::vector<QueuedAction>& actions) {
                 if (actions.empty()) return QString("Aucune action préparée");
                 QStringList list;
@@ -365,7 +496,8 @@ void RunPage::updateCombatUI() {
                                "Sang : " + QString::number(fighter1->blood, 'f', 1) + " / 32.0 tics\n" +
                                "Endurance : " + QString::number(fighter1->physicalReserve) + " / " + QString::number(fighter1->maxPhysicalReserve) + 
                                " (" + QString::fromStdString(fighter1->getPhysicalState()) + ")\n" +
-                               armorInfo + "\n\nActions préparées :\n" + formatActions(p1Actions));
+                               armorInfo + "\n" +
+                               weaponInfo + "\n\nActions préparées :\n" + formatActions(p1Actions));
         }
         
         p2NameLabel->setText(QString::fromStdString(fighter2->getName()));
@@ -379,6 +511,17 @@ void RunPage::updateCombatUI() {
                             .arg(armor.maxDurability);
                 if (armor.durability <= 0) {
                     armorInfo += " [ROMPUE]";
+                }
+            }
+            QString weaponInfo = "Arme : Aucune";
+            if (fighter2->weapon.has_value()) {
+                const auto& weapon = fighter2->weapon.value();
+                weaponInfo = QString("Arme : %1 (Durabilité : %2/%3)")
+                             .arg(QString::fromStdString(weapon.name))
+                             .arg(weapon.durability)
+                             .arg(weapon.maxDurability);
+                if (weapon.durability <= 0) {
+                    weaponInfo += " [ROMPUE]";
                 }
             }
             auto formatActions = [](const std::vector<QueuedAction>& actions) {
@@ -405,7 +548,8 @@ void RunPage::updateCombatUI() {
                                "Sang : " + QString::number(fighter2->blood, 'f', 1) + " / 32.0 tics\n" +
                                "Endurance : " + QString::number(fighter2->physicalReserve) + " / " + QString::number(fighter2->maxPhysicalReserve) + 
                                " (" + QString::fromStdString(fighter2->getPhysicalState()) + ")\n" +
-                               armorInfo + "\n\nActions préparées :\n" + formatActions(p2Actions));
+                               armorInfo + "\n" +
+                               weaponInfo + "\n\nActions préparées :\n" + formatActions(p2Actions));
         }
         
         if (fighter1->isDead() || fighter2->isDead() || fighter1->physicalReserve <= 0 || fighter2->physicalReserve <= 0) {
@@ -471,6 +615,8 @@ void RunPage::resolveTurn() {
     ControlMode secondMode = p2Mode;
     int firstFree = p1FreeActions;
     int secondFree = p2FreeActions;
+    int firstPlayerNum = 1;
+    int secondPlayerNum = 2;
 
     if (fighter2->getEffectiveVitesse() > fighter1->getEffectiveVitesse()) {
         speedFirst = &(*fighter2);
@@ -481,10 +627,12 @@ void RunPage::resolveTurn() {
         secondMode = p1Mode;
         firstFree = p2FreeActions;
         secondFree = p1FreeActions;
+        firstPlayerNum = 2;
+        secondPlayerNum = 1;
     }
 
-    fetchAutomatedActions(*speedFirst, *firstActionsPtr, firstFree, firstMode);
-    fetchAutomatedActions(*speedSecond, *secondActionsPtr, secondFree, secondMode);
+    fetchAutomatedActions(*speedFirst, *firstActionsPtr, firstFree, firstMode, firstPlayerNum);
+    fetchAutomatedActions(*speedSecond, *secondActionsPtr, secondFree, secondMode, secondPlayerNum);
 
     // Mettre à jour l'UI après que les IA ont choisi
     updateCombatUI();
@@ -510,6 +658,9 @@ void RunPage::resolveTurn() {
             std::optional<int> preArmor;
             if (defender->armor.has_value()) preArmor = defender->armor->durability;
 
+            std::optional<int> preWeapon;
+            if (attacker->weapon.has_value()) preWeapon = attacker->weapon->durability;
+
             bool wasParrying = (defender->activeParries > 0);
             int eff = CombatSystem::executeAttack(*attacker, *defender, action.overclockMultiplier);
             
@@ -524,18 +675,36 @@ void RunPage::resolveTurn() {
                 if (wasParrying) {
                     logMsg += " (paré, efficacité de l'attaque réduite de 10%)";
                 }
-                
-                if (defender->armor.has_value() && preArmor.has_value()) {
-                    int currentDur = defender->armor->durability;
-                    int diff = preArmor.value() - currentDur;
-                    if (diff > 0) {
-                        logMsg += QString("\n  [Armure] %1 subit -%2 de durabilité (%3/%4)")
-                                  .arg(QString::fromStdString(defender->armor->name))
-                                  .arg(diff).arg(currentDur).arg(defender->armor->maxDurability);
-                        if (currentDur == 0 && preArmor.value() > 0) logMsg += QString("\n  [Armure] %1 est rompue !").arg(QString::fromStdString(defender->armor->name));
+            }
+
+            // Log weapon durability loss
+            if (attacker->weapon.has_value() && preWeapon.has_value()) {
+                int currentDur = attacker->weapon->durability;
+                int diff = preWeapon.value() - currentDur;
+                if (diff > 0) {
+                    logMsg += QString("\n  [Arme] %1 subit -%2 de durabilité (%3/%4)")
+                              .arg(QString::fromStdString(attacker->weapon->name))
+                              .arg(diff).arg(currentDur).arg(attacker->weapon->maxDurability);
+                    if (currentDur == 0 && preWeapon.value() > 0) {
+                        logMsg += QString("\n  [Arme] %1 est rompue !").arg(QString::fromStdString(attacker->weapon->name));
                     }
                 }
             }
+
+            // Log armor durability loss
+            if (defender->armor.has_value() && preArmor.has_value()) {
+                int currentDur = defender->armor->durability;
+                int diff = preArmor.value() - currentDur;
+                if (diff > 0) {
+                    logMsg += QString("\n  [Armure] %1 subit -%2 de durabilité (%3/%4)")
+                              .arg(QString::fromStdString(defender->armor->name))
+                              .arg(diff).arg(currentDur).arg(defender->armor->maxDurability);
+                    if (currentDur == 0 && preArmor.value() > 0) {
+                        logMsg += QString("\n  [Armure] %1 est rompue !").arg(QString::fromStdString(defender->armor->name));
+                    }
+                }
+            }
+
             if (defender->isDead()) {
                 logMsg += "\n" + QString::fromStdString(defender->getName()) + " est K.O !";
             }
@@ -736,8 +905,8 @@ QJsonObject RunPage::serializeState(const Entity& active, const std::vector<Queu
     return state;
 }
 
-QString RunPage::queryScript(const QJsonObject& state) {
-    QString scriptPath = scriptPathEdit->text();
+QString RunPage::queryScript(const QJsonObject& state, int playerNum) {
+    QString scriptPath = (playerNum == 1) ? scriptPathEdit1->text() : scriptPathEdit2->text();
     if (scriptPath.isEmpty()) {
         scriptPath = "scripts/ai_agent.py";
     }
@@ -775,9 +944,9 @@ QString RunPage::queryScript(const QJsonObject& state) {
     return respObj["action"].toString("Passer");
 }
 
-QString RunPage::queryTCP(const QJsonObject& state) {
-    QString host = tcpHostEdit->text();
-    int port = tcpPortEdit->value();
+QString RunPage::queryTCP(const QJsonObject& state, int playerNum) {
+    QString host = (playerNum == 1) ? tcpHostEdit1->text() : tcpHostEdit2->text();
+    int port = (playerNum == 1) ? tcpPortEdit1->value() : tcpPortEdit2->value();
     if (host.isEmpty()) host = "127.0.0.1";
     
     QTcpSocket socket;
@@ -831,7 +1000,7 @@ QString RunPage::queryTCP(const QJsonObject& state) {
     return respObj["action"].toString("Passer");
 }
 
-void RunPage::fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& actions, int freeActions, ControlMode mode) {
+void RunPage::fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& actions, int freeActions, ControlMode mode, int playerNum) {
     if (mode == ControlMode::Manual) return;
     
     actions.clear();
@@ -850,9 +1019,9 @@ void RunPage::fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& a
         
         QString actionStr;
         if (mode == ControlMode::Script) {
-            actionStr = queryScript(state);
+            actionStr = queryScript(state, playerNum);
         } else if (mode == ControlMode::TCP) {
-            actionStr = queryTCP(state);
+            actionStr = queryTCP(state, playerNum);
         }
         
         actionStr = actionStr.trimmed();
