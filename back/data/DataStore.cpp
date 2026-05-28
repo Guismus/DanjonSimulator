@@ -188,10 +188,11 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 
 
 
-                std::string dmgTypeStr = j.value("physicalDamageType", "Neutre");
-                if (dmgTypeStr == "Contondant") entity.physicalDamageType = PhysicalDamageType::Contondant;
-                else if (dmgTypeStr == "Tranchant") entity.physicalDamageType = PhysicalDamageType::Tranchant;
-                else entity.physicalDamageType = PhysicalDamageType::Neutre;
+                std::string dmgTypeStr = j.value("damageType", "Neutre");
+                if (dmgTypeStr == "Contondant") entity.damageType = DamageType::Contondant;
+                else if (dmgTypeStr == "Tranchant") entity.damageType = DamageType::Tranchant;
+                else if (dmgTypeStr == "Feu") entity.damageType = DamageType::Feu;
+                else entity.damageType = DamageType::Neutre;
 
                 if (auto t = getEnergyThresholds(entity.rank)) {
                     entity.physicalThresholds = *t;
@@ -259,11 +260,13 @@ bool DataStore::loadWeapons(const std::string& directoryPath) {
                 
                 std::string dmgTypeStr = j.value("type_de_degat", j.value("type de degat", j.value("damageType", j.value("damage_type", "Tranchant"))));
                 if (dmgTypeStr == "Contondant" || dmgTypeStr == "contondant") {
-                    weapon.damageType = PhysicalDamageType::Contondant;
+                    weapon.damageType = DamageType::Contondant;
                 } else if (dmgTypeStr == "Tranchant" || dmgTypeStr == "tranchant") {
-                    weapon.damageType = PhysicalDamageType::Tranchant;
+                    weapon.damageType = DamageType::Tranchant;
+                } else if (dmgTypeStr == "Feu" || dmgTypeStr == "feu") {
+                    weapon.damageType = DamageType::Feu;
                 } else {
-                    weapon.damageType = PhysicalDamageType::Neutre;
+                    weapon.damageType = DamageType::Neutre;
                 }
                 
                 weapon.durability = j.value("durabilite", j.value("durability", 100));

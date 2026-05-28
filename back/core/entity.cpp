@@ -7,14 +7,14 @@ Entity::Entity(const std::string& name)
       force(0.0f), resistance(0.0f), vitesse(0.0f), forceMagique(0.0f), resistanceMagique(0.0f),
       blood(32.0f), physicalReserve(0.0f), maxPhysicalReserve(0.0f), magicReserve(0.0f),
       activeParries(0), activeDodges(0),
-      physicalDamageType(PhysicalDamageType::Neutre) {
+      damageType(DamageType::Neutre) {
 }
 
 const std::string& Entity::getName() const {
     return name;
 }
 
-void Entity::applyWound(int eff, PhysicalDamageType type) {
+void Entity::applyWound(int eff, DamageType type) {
     // Les blessures négatives sont également accumulées !
     // Combiner les blessures identiques : 2 Stade X = Stade X+1
     auto it = std::find_if(wounds.begin(), wounds.end(), [eff](const Wound& w) {
@@ -22,8 +22,8 @@ void Entity::applyWound(int eff, PhysicalDamageType type) {
     });
     
     while (it != wounds.end()) {
-        if (it->damageType == PhysicalDamageType::Tranchant) {
-            type = PhysicalDamageType::Tranchant;
+        if (it->damageType == DamageType::Tranchant) {
+            type = DamageType::Tranchant;
         }
         wounds.erase(it);
         eff += 1;
@@ -32,7 +32,7 @@ void Entity::applyWound(int eff, PhysicalDamageType type) {
         });
     }
     
-    wounds.push_back({eff, type});
+    wounds.push_back(Wound(eff, type, currentTurn));
     std::sort(wounds.begin(), wounds.end(), [](const Wound& a, const Wound& b) {
         return a.effectiveness > b.effectiveness;
     });
@@ -68,17 +68,17 @@ std::string Entity::getPhysicalState() const {
     return "En forme";
 }
 
-PhysicalDamageType Entity::getActiveDamageType() const {
+DamageType Entity::getActiveDamageType() const {
     if (weapon.has_value() && weapon->durability > 0) {
         return weapon->damageType;
     }
-    return physicalDamageType;
+    return damageType;
 }
 
 int Entity::getBleedingRate() const {
     int maxRate = 0;
     for (const auto& wound : wounds) {
-        if (wound.damageType == PhysicalDamageType::Tranchant) {
+        if (wound.damageType == DamageType::Tranchant) {
             int rate = 0;
             if (wound.effectiveness <= 0) {
                 rate = 1;
@@ -107,13 +107,11 @@ std::string Entity::getBleedingState() const {
 
 float Entity::getEffectiveForce() const {
     float val = force;
-    if (!wounds.empty()) {
-        int maxW = wounds.front().effectiveness;
-        if (maxW >= 4) {
-            val *= 0.70f;
-        } else if (maxW == 3) {
-            val *= 0.85f;
-        }
+    int maxW = getActiveMaxWoundEffectiveness();
+    if (maxW >= 4) {
+        val *= 0.70f;
+    } else if (maxW == 3) {
+        val *= 0.85f;
     }
     return std::ceil(val * 4.0f) / 4.0f;
 }
@@ -124,26 +122,22 @@ float Entity::getEffectiveResistance() const {
 
 float Entity::getEffectiveVitesse() const {
     float val = vitesse;
-    if (!wounds.empty()) {
-        int maxW = wounds.front().effectiveness;
-        if (maxW >= 4) {
-            val *= 0.70f;
-        } else if (maxW == 3) {
-            val *= 0.85f;
-        }
+    int maxW = getActiveMaxWoundEffectiveness();
+    if (maxW >= 4) {
+        val *= 0.70f;
+    } else if (maxW == 3) {
+        val *= 0.85f;
     }
     return std::ceil(val * 4.0f) / 4.0f;
 }
 
 float Entity::getEffectiveForceMagique() const {
     float val = forceMagique;
-    if (!wounds.empty()) {
-        int maxW = wounds.front().effectiveness;
-        if (maxW >= 4) {
-            val *= 0.70f;
-        } else if (maxW == 3) {
-            val *= 0.85f;
-        }
+    int maxW = getActiveMaxWoundEffectiveness();
+    if (maxW >= 4) {
+        val *= 0.70f;
+    } else if (maxW == 3) {
+        val *= 0.85f;
     }
     return std::ceil(val * 4.0f) / 4.0f;
 }
@@ -159,4 +153,74 @@ bool Entity::hasPassive(const std::string& passiveName) const {
         }
     }
     return false;
+}
+
+std::string Entity::getNormalizedClass() const {
+    if (!characterClass.has_value()) return "";
+    std::string s = characterClass.value();
+    std::string res;
+    for (char c : s) {
+        if (c != ' ' && c != '-' && c != '_') {
+            res += std::toupper(static_cast<unsigned char>(c));
+        }
+    }
+    if (res.find("ARACHN") != std::string::npos) return "ARACHNEE";
+    if (res.find("FANT") != std::string::npos) return "FANTOME";
+    if (res.find("FORGE") != std::string::npos) return "FORGEMAITRE";
+    if (res.find("GRIMM") != std::string::npos) return "GRIMM";
+    if (res.find("AEGIS") != std::string::npos) return "AEGIS";
+    return res;
+}
+
+int Entity::getActiveMaxWoundEffectiveness() const {
+    int maxW = -999;
+    std::string klass = getNormalizedClass();
+    bool delay = (klass == "AEGIS");
+    
+    for (const auto& w : wounds) {
+        if (delay) {
+            if (currentTurn - w.turnApplied < 2) {
+                continue;
+            }
+        }
+        if (w.effectiveness > maxW) {
+            maxW = w.effectiveness;
+        }
+    }
+    return maxW;
+}
+
+bool Entity::isImmuneToPoison() const {
+    std::string klass = getNormalizedClass();
+    return (klass == "GRIMM" || klass == "ARACHNEE");
+}
+
+bool Entity::isImmuneToCharm() const {
+    std::string klass = getNormalizedClass();
+    return (klass == "GRIMM" || klass == "ARACHNEE");
+}
+
+bool Entity::isImmuneToStun() const {
+    std::string klass = getNormalizedClass();
+    return (klass == "AEGIS");
+}
+
+float Entity::getFireDamageResistanceBonus() const {
+    std::string klass = getNormalizedClass();
+    if (klass == "FORGEMAITRE") {
+        return 0.10f;
+    }
+    return 0.0f;
+}
+
+float Entity::getResistanceTo(DamageType type) const {
+    float resist = 0.0f;
+    auto it = damageResistances.find(type);
+    if (it != damageResistances.end()) {
+        resist += it->second;
+    }
+    if (type == DamageType::Feu) {
+        resist += getFireDamageResistanceBonus();
+    }
+    return resist;
 }

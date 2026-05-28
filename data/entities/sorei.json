@@ -6,5 +6,6 @@
     "resistance": 24.75,
     "vitesse": 21,
     "forceMagique": 10,
-    "resistanceMagique": 29
+    "resistanceMagique": 29,
+    "characterClass": "AEGIS"
 }

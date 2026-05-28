@@ -34,11 +34,12 @@ static QString getStageName(int eff) {
     return name;
 }
 
-static QString getDamageTypeName(PhysicalDamageType type) {
+static QString getDamageTypeName(DamageType type) {
     switch (type) {
-        case PhysicalDamageType::Neutre: return "Neutre (Pugilat)";
-        case PhysicalDamageType::Contondant: return "Contondant";
-        case PhysicalDamageType::Tranchant: return "Tranchant";
+        case DamageType::Neutre: return "Neutre (Pugilat)";
+        case DamageType::Contondant: return "Contondant";
+        case DamageType::Tranchant: return "Tranchant";
+        case DamageType::Feu: return "Feu";
     }
     return "Inconnu";
 }
@@ -238,27 +239,13 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     });
     
     auto addActionP1 = [this](ActionType type) {
-        float multipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
-        float multiplier = 1.0f;
-        int queued = p1Actions.size();
-        if (queued >= p1FreeActions) {
-            int idx = queued - p1FreeActions;
-            if (idx > 5) idx = 5;
-            multiplier = multipliers[idx];
-        }
+        float multiplier = getNextMultiplier(*fighter1, p1Actions, type, p1FreeActions);
         p1Actions.push_back({type, multiplier});
         updateCombatUI();
     };
 
     auto addActionP2 = [this](ActionType type) {
-        float multipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
-        float multiplier = 1.0f;
-        int queued = p2Actions.size();
-        if (queued >= p2FreeActions) {
-            int idx = queued - p2FreeActions;
-            if (idx > 5) idx = 5;
-            multiplier = multipliers[idx];
-        }
+        float multiplier = getNextMultiplier(*fighter2, p2Actions, type, p2FreeActions);
         p2Actions.push_back({type, multiplier});
         updateCombatUI();
     };
@@ -435,10 +422,12 @@ void RunPage::updateCombatUI() {
             QString res = "[";
             for (size_t i = 0; i < w.size(); ++i) {
                 res += getStageName(w[i].effectiveness);
-                if (w[i].damageType == PhysicalDamageType::Tranchant) {
+                if (w[i].damageType == DamageType::Tranchant) {
                     res += " (Tranchante)";
-                } else if (w[i].damageType == PhysicalDamageType::Contondant) {
+                } else if (w[i].damageType == DamageType::Contondant) {
                     res += " (Contondante)";
+                } else if (w[i].damageType == DamageType::Feu) {
+                    res += " (Feu)";
                 } else {
                     res += " (Neutre)";
                 }
@@ -491,7 +480,13 @@ void RunPage::updateCombatUI() {
                 return list.join("\n");
             };
 
-            p1HpLabel->setText("Blessures : " + formatWounds(fighter1->wounds) + "\n" +
+            QString classDetails = "";
+            if (fighter1->characterClass.has_value() && !fighter1->characterClass.value().empty()) {
+                classDetails = "Classe : " + QString::fromStdString(fighter1->characterClass.value()) + "\n";
+            }
+
+            p1HpLabel->setText(classDetails +
+                               "Blessures : " + formatWounds(fighter1->wounds) + "\n" +
                                "Saignement : " + QString::fromStdString(fighter1->getBleedingState()) + " (" + QString::number(fighter1->getBleedingRate()) + " tics/tour)\n" +
                                "Sang : " + QString::number(fighter1->blood, 'f', 1) + " / 32.0 tics\n" +
                                "Endurance : " + QString::number(fighter1->physicalReserve) + " / " + QString::number(fighter1->maxPhysicalReserve) + 
@@ -543,7 +538,13 @@ void RunPage::updateCombatUI() {
                 return list.join("\n");
             };
 
-            p2HpLabel->setText("Blessures : " + formatWounds(fighter2->wounds) + "\n" +
+            QString classDetails = "";
+            if (fighter2->characterClass.has_value() && !fighter2->characterClass.value().empty()) {
+                classDetails = "Classe : " + QString::fromStdString(fighter2->characterClass.value()) + "\n";
+            }
+
+            p2HpLabel->setText(classDetails +
+                               "Blessures : " + formatWounds(fighter2->wounds) + "\n" +
                                "Saignement : " + QString::fromStdString(fighter2->getBleedingState()) + " (" + QString::number(fighter2->getBleedingRate()) + " tics/tour)\n" +
                                "Sang : " + QString::number(fighter2->blood, 'f', 1) + " / 32.0 tics\n" +
                                "Endurance : " + QString::number(fighter2->physicalReserve) + " / " + QString::number(fighter2->maxPhysicalReserve) + 
@@ -578,29 +579,30 @@ void RunPage::updateCombatUI() {
             p2PassBtn->setEnabled(p2Manual && !p2Finished);
             p2CancelBtn->setEnabled(p2Manual && (p2Finished || !p2Actions.empty()));
             
-            auto setBtnText = [](QPushButton* btnAttack, QPushButton* btnParry, QPushButton* btnDodge, const std::vector<QueuedAction>& actions, int freeCount) {
-                float multipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
-                int queued = actions.size();
-                float nextMult = 1.0f;
-                if (queued >= freeCount) {
-                    int idx = queued - freeCount;
-                    if (idx > 5) idx = 5;
-                    nextMult = multipliers[idx];
-                }
+            auto setBtnText = [this](QPushButton* btnAttack, QPushButton* btnParry, QPushButton* btnDodge, const Entity& entity, const std::vector<QueuedAction>& actions, int freeCount) {
+                float attackMult = getNextMultiplier(entity, actions, ActionType::Attack, freeCount);
+                float parryMult = getNextMultiplier(entity, actions, ActionType::Parry, freeCount);
+                float dodgeMult = getNextMultiplier(entity, actions, ActionType::Dodge, freeCount);
                 
-                QString suffix = queued >= freeCount ? " (Surcad. x" + QString::number(nextMult, 'f', 1) + ")" : " (Gratuit)";
-                btnAttack->setText("Attaquer" + suffix);
-                btnParry->setText("Parer" + suffix);
-                btnDodge->setText("Esquiver" + suffix);
+                auto formatSuffix = [](float mult) {
+                    return mult > 1.0f ? " (Surcad. x" + QString::number(mult, 'f', 1) + ")" : " (Gratuit)";
+                };
+                
+                btnAttack->setText("Attaquer" + formatSuffix(attackMult));
+                btnParry->setText("Parer" + formatSuffix(parryMult));
+                btnDodge->setText("Esquiver" + formatSuffix(dodgeMult));
             };
-            setBtnText(p1AttackBtn, p1ParryBtn, p1DodgeBtn, p1Actions, p1FreeActions);
-            setBtnText(p2AttackBtn, p2ParryBtn, p2DodgeBtn, p2Actions, p2FreeActions);
+            setBtnText(p1AttackBtn, p1ParryBtn, p1DodgeBtn, *fighter1, p1Actions, p1FreeActions);
+            setBtnText(p2AttackBtn, p2ParryBtn, p2DodgeBtn, *fighter2, p2Actions, p2FreeActions);
         }
     }
 }
 
 void RunPage::resolveTurn() {
     if (!fighter1 || !fighter2) return;
+
+    fighter1->currentTurn = currentTurn;
+    fighter2->currentTurn = currentTurn;
 
     // Récupérer les modes de contrôle
     ControlMode p1Mode = static_cast<ControlMode>(char1ModeCombo->currentIndex());
@@ -671,9 +673,10 @@ void RunPage::resolveTurn() {
             } else if (eff == -99) {
                 logMsg += "-> L'attaque est bloquée par l'armure !";
             } else {
-                logMsg += "inflige un " + getStageName(eff);
+                logMsg += "et inflige un " + getStageName(eff) + " physique (" + getDamageTypeName(attacker->getActiveDamageType()) + ")";
                 if (wasParrying) {
-                    logMsg += " (paré, efficacité de l'attaque réduite de 10%)";
+                    int pct = (defender->getNormalizedClass() == "AEGIS") ? 25 : 10;
+                    logMsg += " (paré, efficacité de l'attaque réduite de " + QString::number(pct) + "%)";
                 }
             }
 
@@ -712,7 +715,8 @@ void RunPage::resolveTurn() {
             logMsg += "Parade (Action " + QString::number(actionIndex + 1) + ") ";
             if (action.overclockMultiplier > 1.0f) logMsg += "[Surcadençage x" + QString::number(action.overclockMultiplier, 'f', 1) + "] ";
             CombatSystem::executeParry(*attacker, action.overclockMultiplier);
-            logMsg += "-> Prépare une parade (dégâts de la prochaine attaque réduits de 10%).";
+            int pct = (attacker->getNormalizedClass() == "AEGIS") ? 25 : 10;
+            logMsg += "-> Prépare une parade (dégâts de la prochaine attaque réduits de " + QString::number(pct) + "%).";
         } else if (action.type == ActionType::Dodge) {
             logMsg += "Esquive (Action " + QString::number(actionIndex + 1) + ") ";
             if (action.overclockMultiplier > 1.0f) logMsg += "[Surcadençage x" + QString::number(action.overclockMultiplier, 'f', 1) + "] ";
@@ -721,7 +725,44 @@ void RunPage::resolveTurn() {
         } else if (action.type == ActionType::Magic) {
             logMsg += "Magie (Action " + QString::number(actionIndex + 1) + ") ";
             if (action.overclockMultiplier > 1.0f) logMsg += "[Surcadençage x" + QString::number(action.overclockMultiplier, 'f', 1) + "] ";
-            logMsg += "-> Tente de lancer une magie (Non implémenté dans le moteur de combat).";
+            
+            std::optional<int> preArmor;
+            if (defender->armor.has_value()) preArmor = defender->armor->durability;
+
+            bool wasParrying = (defender->activeParries > 0);
+            int eff = CombatSystem::executeAttack(*attacker, *defender, action.overclockMultiplier, DamageNature::Magique, DamageType::Feu);
+            
+            if (eff == -98) {
+                logMsg += "-> La magie est esquivée !";
+            } else if (eff == -97) {
+                logMsg += "-> La magie est bloquée par la parade (Bouclier en métal) !";
+            } else if (eff == -99) {
+                logMsg += "-> La magie est bloquée par l'armure !";
+            } else {
+                logMsg += "et inflige un " + getStageName(eff) + " magique (Feu)";
+                if (wasParrying) {
+                    int pct = (defender->getNormalizedClass() == "AEGIS") ? 25 : 10;
+                    logMsg += " (paré, efficacité de l'attaque réduite de " + QString::number(pct) + "%)";
+                }
+            }
+
+            // Log armor durability loss
+            if (defender->armor.has_value() && preArmor.has_value()) {
+                int currentDur = defender->armor->durability;
+                int diff = preArmor.value() - currentDur;
+                if (diff > 0) {
+                    logMsg += QString("\n  [Armure] %1 subit -%2 de durabilité (%3/%4)")
+                              .arg(QString::fromStdString(defender->armor->name))
+                              .arg(diff).arg(currentDur).arg(defender->armor->maxDurability);
+                    if (currentDur == 0 && preArmor.value() > 0) {
+                        logMsg += QString("\n  [Armure] %1 est rompue !").arg(QString::fromStdString(defender->armor->name));
+                    }
+                }
+            }
+
+            if (defender->isDead()) {
+                logMsg += "\n" + QString::fromStdString(defender->getName()) + " est K.O !";
+            }
         }
         
         combatLog->append(logMsg);
@@ -874,6 +915,7 @@ void RunPage::saveCombatLog() {
 QJsonObject RunPage::serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions, int freeActions) {
     QJsonObject obj;
     obj["name"] = QString::fromStdString(entity.getName());
+    obj["class"] = entity.characterClass.has_value() ? QString::fromStdString(entity.characterClass.value()) : "";
     obj["blood"] = entity.blood;
     obj["physical_reserve"] = entity.physicalReserve;
     obj["max_physical_reserve"] = entity.maxPhysicalReserve;
@@ -1014,7 +1056,6 @@ void RunPage::fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& a
     Entity& opponent = (&entity == &(*fighter1)) ? (*fighter2) : (*fighter1);
     const std::vector<QueuedAction>& opponentActions = (&entity == &(*fighter1)) ? p2Actions : p1Actions;
     
-    float multipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
     int maxTries = 10; // Prevent infinite loops
     
     for (int i = 0; i < maxTries; ++i) {
@@ -1047,14 +1088,7 @@ void RunPage::fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& a
             break; // Unrecognized action
         }
         
-        float multiplier = 1.0f;
-        int queued = actions.size();
-        if (queued >= freeActions) {
-            int idx = queued - freeActions;
-            if (idx > 5) idx = 5;
-            multiplier = multipliers[idx];
-        }
-        
+        float multiplier = getNextMultiplier(entity, actions, type, freeActions);
         actions.push_back({type, multiplier});
     }
 }
@@ -1065,4 +1099,57 @@ void RunPage::checkResolve() {
     if (p1FinishedActual && p2FinishedActual) {
         resolveTurn();
     }
+}
+
+std::vector<float> RunPage::computeOverclockMultipliers(const Entity& entity, const std::vector<ActionType>& actions, int baseFreeActions) {
+    std::vector<float> multipliers(actions.size(), 1.0f);
+    float overclockMultipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
+
+    std::string klass = entity.getNormalizedClass();
+    bool hasFreeParry = (klass == "AEGIS");
+    bool hasFreeAttack = (klass == "FANTOME");
+
+    bool freeParryUsed = false;
+    bool freeAttackUsed = false;
+    
+    int standardActionsCount = 0;
+
+    for (size_t i = 0; i < actions.size(); ++i) {
+        ActionType type = actions[i];
+        
+        bool isFreeDueToClass = false;
+        if (type == ActionType::Parry && hasFreeParry && !freeParryUsed) {
+            isFreeDueToClass = true;
+            freeParryUsed = true;
+        } else if (type == ActionType::Attack && hasFreeAttack && !freeAttackUsed) {
+            isFreeDueToClass = true;
+            freeAttackUsed = true;
+        }
+
+        if (isFreeDueToClass) {
+            multipliers[i] = 1.0f;
+        } else {
+            if (standardActionsCount < baseFreeActions) {
+                multipliers[i] = 1.0f;
+            } else {
+                int idx = standardActionsCount - baseFreeActions;
+                if (idx > 5) idx = 5;
+                multipliers[i] = overclockMultipliers[idx];
+            }
+            standardActionsCount++;
+        }
+    }
+    return multipliers;
+}
+
+float RunPage::getNextMultiplier(const Entity& entity, const std::vector<QueuedAction>& currentActions, ActionType nextType, int baseFreeActions) {
+    std::vector<ActionType> types;
+    for (const auto& a : currentActions) {
+        types.push_back(a.type);
+    }
+    types.push_back(nextType);
+    
+    std::vector<float> mults = computeOverclockMultipliers(entity, types, baseFreeActions);
+    if (mults.empty()) return 1.0f;
+    return mults.back();
 }

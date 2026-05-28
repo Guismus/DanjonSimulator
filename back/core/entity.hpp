@@ -5,12 +5,16 @@
 #include <vector>
 #include <optional>
 
+enum class DamageNature {
+    Physique,
+    Magique
+};
 
-
-enum class PhysicalDamageType {
+enum class DamageType {
     Neutre,
     Contondant,
-    Tranchant
+    Tranchant,
+    Feu
 };
 
 enum class WeaponWeight {
@@ -28,7 +32,7 @@ enum class ArmorMaterial {
 struct Weapon {
     std::string name;
     WeaponWeight type;
-    PhysicalDamageType damageType;
+    DamageType damageType;
     int durability;
     int maxDurability;
     int res;
@@ -61,7 +65,11 @@ struct EnergyThresholds {
 
 struct Wound {
     int effectiveness;
-    PhysicalDamageType damageType;
+    DamageType damageType;
+    int turnApplied;
+
+    Wound(int eff, DamageType type, int turn = 1)
+        : effectiveness(eff), damageType(type), turnApplied(turn) {}
 };
 
 class Entity {
@@ -94,18 +102,19 @@ public:
     std::optional<Armor> armor;
     std::optional<Catalyst> catalyst;
 
-    PhysicalDamageType physicalDamageType = PhysicalDamageType::Neutre;
+    DamageType damageType = DamageType::Neutre;
+    std::map<DamageType, float> damageResistances;
 
     int activeParries = 0;
     int activeDodges = 0;
 
     // Methods
     const std::string& getName() const;
-    void applyWound(int effectiveness, PhysicalDamageType type);
+    void applyWound(int effectiveness, DamageType type);
     void applyBleeding(int severity);
     bool isDead() const;
     std::string getPhysicalState() const;
-    PhysicalDamageType getActiveDamageType() const;
+    DamageType getActiveDamageType() const;
     int getBleedingRate() const;
     std::string getBleedingState() const;
     
@@ -115,6 +124,15 @@ public:
     float getEffectiveForceMagique() const;
     float getEffectiveResistanceMagique() const;
     bool hasPassive(const std::string& passiveName) const;
+
+    int currentTurn = 1;
+    std::string getNormalizedClass() const;
+    int getActiveMaxWoundEffectiveness() const;
+    bool isImmuneToPoison() const;
+    bool isImmuneToCharm() const;
+    bool isImmuneToStun() const;
+    float getFireDamageResistanceBonus() const;
+    float getResistanceTo(DamageType type) const;
 
     std::vector<Wound> wounds; // Tracks current wound stages
 

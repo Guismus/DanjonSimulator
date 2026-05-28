@@ -99,4 +99,7 @@ private:
     QJsonObject serializeState(const Entity& active, const std::vector<QueuedAction>& activeActions,
                                const Entity& opponent, const std::vector<QueuedAction>& opponentActions);
     QJsonObject serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions, int freeActions);
+    
+    std::vector<float> computeOverclockMultipliers(const Entity& entity, const std::vector<ActionType>& actions, int baseFreeActions);
+    float getNextMultiplier(const Entity& entity, const std::vector<QueuedAction>& currentActions, ActionType nextType, int baseFreeActions);
 };

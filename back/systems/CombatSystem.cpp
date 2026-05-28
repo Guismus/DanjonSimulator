@@ -52,7 +52,8 @@ void CombatSystem::executeDodge(Entity& character, float enduranceMultiplier) {
     character.activeDodges++;
 }
 
-int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier) {
+int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier, DamageNature nature, std::optional<DamageType> overrideType) {
+    DamageType activeType = overrideType.value_or(attacker.getActiveDamageType());
     // Cost in endurance per attack (Pugilat by default = 7.5f)
     float cost = 7.5f; 
     float multiplier = 1.0f;
@@ -89,8 +90,8 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
         return -98; // Special code for Evaded/Esquivé
     }
 
-    float attForce = attacker.getEffectiveForce();
-    float defRes = defender.getEffectiveResistance();
+    float attForce = (nature == DamageNature::Physique) ? attacker.getEffectiveForce() : attacker.getEffectiveForceMagique();
+    float defRes = (nature == DamageNature::Physique) ? defender.getEffectiveResistance() : defender.getEffectiveResistanceMagique();
 
     // Weapon Durability reduction
     if (attacker.weapon.has_value() && attacker.weapon->durability > 0) {
@@ -142,7 +143,7 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
     if (defender.activeParries > 0) {
         defender.activeParries--;
         parried = true;
-        if (defender.hasPassive("Bouclier en métal") && attacker.getActiveDamageType() == PhysicalDamageType::Tranchant) {
+        if (defender.hasPassive("Bouclier en métal") && activeType == DamageType::Tranchant) {
             parryBlocked = true;
         }
     }
@@ -153,7 +154,11 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
 
     if (parried) {
         if (effectiveness >= 0) {
-            effectiveness = static_cast<int>(effectiveness * 0.9f); // 10% reduction
+            float reduction = 0.9f;
+            if (defender.getNormalizedClass() == "AEGIS") {
+                reduction = 0.75f;
+            }
+            effectiveness = static_cast<int>(effectiveness * reduction); // 10% or 25% reduction
         }
     }
     
@@ -161,8 +166,9 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
     if (defender.armor.has_value() && defender.armor->durability > 0) {
         auto& armor = defender.armor.value();
         
-        int refArmorLevel = (attForce < armor.res) ? attacker.stade : defender.stade;
-        int eff_armor = calculateStatDifference(attForce, armor.res, refArmorLevel);
+        int armorRes = (nature == DamageNature::Physique) ? armor.res : armor.resMagique;
+        int refArmorLevel = (attForce < armorRes) ? attacker.stade : defender.stade;
+        int eff_armor = calculateStatDifference(attForce, armorRes, refArmorLevel);
         
         int durabilityLoss = 0;
         if (eff_armor <= -5) {
@@ -189,6 +195,12 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
             durabilityLoss = armor.durability;
         }
         
+        if (attacker.getNormalizedClass() == "ARACHNEE") {
+            if (armor.material == ArmorMaterial::Peau || armor.material == ArmorMaterial::Fibre) {
+                durabilityLoss *= 2;
+            }
+        }
+        
         armor.durability = std::max(0, armor.durability - durabilityLoss);
         
         if (armor.durability > 0) {
@@ -197,7 +209,7 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
                     effectiveness = static_cast<int>(effectiveness * 0.85f); // 15% reduction
                 }
             } else if (armor.material == ArmorMaterial::Mineral) {
-                if (attacker.getActiveDamageType() == PhysicalDamageType::Contondant) {
+                if (activeType == DamageType::Contondant) {
                     if (effectiveness >= 0) {
                         effectiveness = static_cast<int>(effectiveness * 0.85f); // 15% reduction
                     }
@@ -211,6 +223,10 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
     if (blocked) {
         return -99;
     } else {
+        float resist = defender.getResistanceTo(attacker.getActiveDamageType());
+        if (resist > 0.0f && effectiveness >= 0) {
+            effectiveness = static_cast<int>(effectiveness * (1.0f - resist));
+        }
         defender.applyWound(effectiveness, attacker.getActiveDamageType());
         return effectiveness;
     }

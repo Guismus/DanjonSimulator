@@ -18,22 +18,22 @@ void test_wound_stacking() {
     fighter.physicalReserve = 100.0f;
 
     // Apply first wound
-    fighter.applyWound(1, PhysicalDamageType::Tranchant);
+    fighter.applyWound(1, DamageType::Tranchant);
     assert(fighter.wounds.size() == 1);
     assert(fighter.wounds[0].effectiveness == 1);
 
     // Apply second identical wound, they should combine: 2 Stade 1 -> Stade 2
-    fighter.applyWound(1, PhysicalDamageType::Tranchant);
+    fighter.applyWound(1, DamageType::Tranchant);
     assert(fighter.wounds.size() == 1);
     assert(fighter.wounds[0].effectiveness == 2);
 
     // Apply another Stade 2 wound, they should combine: Stade 2 + Stade 2 -> Stade 3
-    fighter.applyWound(2, PhysicalDamageType::Tranchant);
+    fighter.applyWound(2, DamageType::Tranchant);
     assert(fighter.wounds.size() == 1);
     assert(fighter.wounds[0].effectiveness == 3);
 
     // Apply a Stade 1 wound, should not combine, we should have Stade 3 and Stade 1 sorted descending
-    fighter.applyWound(1, PhysicalDamageType::Tranchant);
+    fighter.applyWound(1, DamageType::Tranchant);
     assert(fighter.wounds.size() == 2);
     assert(fighter.wounds[0].effectiveness == 3);
     assert(fighter.wounds[1].effectiveness == 1);
@@ -52,7 +52,7 @@ void test_death_rules() {
     fighter.physicalReserve = 100.0f;
 
     // 3. Stade 5 wound -> dead
-    fighter.applyWound(5, PhysicalDamageType::Neutre);
+    fighter.applyWound(5, DamageType::Neutre);
     assert(fighter.isDead());
 
     // Reset wounds
@@ -66,24 +66,24 @@ void test_death_rules() {
     assert(!fighter.isDead());
 
     // 5. Combined rule: Stade 4 (Surpuissance) + Stade 2 (Avantage) -> dead
-    fighter.applyWound(4, PhysicalDamageType::Neutre);
-    fighter.applyWound(2, PhysicalDamageType::Neutre);
+    fighter.applyWound(4, DamageType::Neutre);
+    fighter.applyWound(2, DamageType::Neutre);
     assert(fighter.isDead());
 
     // Reset wounds
     fighter.wounds.clear();
 
     // 6. Combined rule: Stade 4 (Surpuissance) + Stade 0 (Neutre) -> dead
-    fighter.applyWound(4, PhysicalDamageType::Neutre);
-    fighter.applyWound(0, PhysicalDamageType::Neutre);
+    fighter.applyWound(4, DamageType::Neutre);
+    fighter.applyWound(0, DamageType::Neutre);
     assert(fighter.isDead());
 
     // Reset wounds
     fighter.wounds.clear();
 
     // 7. Combined rule: Stade 4 (Surpuissance) + Stade -1 (Sous-Faveur) -> NOT dead
-    fighter.applyWound(4, PhysicalDamageType::Neutre);
-    fighter.applyWound(-1, PhysicalDamageType::Neutre);
+    fighter.applyWound(4, DamageType::Neutre);
+    fighter.applyWound(-1, DamageType::Neutre);
     assert(!fighter.isDead());
 }
 
@@ -91,7 +91,7 @@ void test_bleeding_rates() {
     Entity fighter("Test Fighter");
     
     // Contondant wounds do not bleed
-    fighter.applyWound(2, PhysicalDamageType::Contondant);
+    fighter.applyWound(2, DamageType::Contondant);
     assert(fighter.getBleedingRate() == 0);
     assert(fighter.getBleedingState() == "Aucun");
 
@@ -99,17 +99,17 @@ void test_bleeding_rates() {
 
     // Tranchant wounds bleed:
     // Stade <= 0: rate = 1 (Faible)
-    fighter.applyWound(0, PhysicalDamageType::Tranchant);
+    fighter.applyWound(0, DamageType::Tranchant);
     assert(fighter.getBleedingRate() == 1);
     assert(fighter.getBleedingState() == "Bénin");
 
     // Stade 1 or 2: rate = 2 (Moyen)
-    fighter.applyWound(2, PhysicalDamageType::Tranchant); // Note: this does not combine with Stade 0
+    fighter.applyWound(2, DamageType::Tranchant); // Note: this does not combine with Stade 0
     assert(fighter.getBleedingRate() == 2); // max rate is 2
     assert(fighter.getBleedingState() == "Violent");
 
     // Stade >= 3: rate = 3 (Grave)
-    fighter.applyWound(3, PhysicalDamageType::Tranchant);
+    fighter.applyWound(3, DamageType::Tranchant);
     assert(fighter.getBleedingRate() == 3);
     assert(fighter.getBleedingState() == "Grave");
 
@@ -169,19 +169,19 @@ void test_stamina_costs() {
     assert(std::abs(attacker.physicalReserve - (400.0f - 7.5f)) < 0.001f);
 
     // Equip light weapon (cost = 7.5)
-    Weapon lightWeapon{"Light Sword", WeaponWeight::Leger, PhysicalDamageType::Tranchant, 100, 100, 10, 5};
+    Weapon lightWeapon{"Light Sword", WeaponWeight::Leger, DamageType::Tranchant, 100, 100, 10, 5};
     attacker.weapon = lightWeapon;
     CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(std::abs(attacker.physicalReserve - (392.5f - 7.5f)) < 0.001f);
 
     // Equip medium weapon (cost = 10.0)
-    Weapon medWeapon{"Mace", WeaponWeight::Moyen, PhysicalDamageType::Contondant, 100, 100, 15, 8};
+    Weapon medWeapon{"Mace", WeaponWeight::Moyen, DamageType::Contondant, 100, 100, 15, 8};
     attacker.weapon = medWeapon;
     CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(std::abs(attacker.physicalReserve - (385.0f - 10.0f)) < 0.001f);
 
     // Equip heavy weapon (cost = 12.5)
-    Weapon heavyWeapon{"Greatsword", WeaponWeight::Lourd, PhysicalDamageType::Tranchant, 100, 100, 20, 10};
+    Weapon heavyWeapon{"Greatsword", WeaponWeight::Lourd, DamageType::Tranchant, 100, 100, 20, 10};
     attacker.weapon = heavyWeapon;
     // Overclock with multiplier 2.3f
     CombatSystem::executeAttack(attacker, defender, 2.3f);
@@ -203,7 +203,7 @@ void test_armor_blocking() {
     defender.armor = mineralArmor;
 
     // Attack with tranchant weapon (should be BLOCKED)
-    Weapon sword{"Sword", WeaponWeight::Moyen, PhysicalDamageType::Tranchant, 100, 100, 15, 8};
+    Weapon sword{"Sword", WeaponWeight::Moyen, DamageType::Tranchant, 100, 100, 15, 8};
     attacker.weapon = sword;
     
     int result = CombatSystem::executeAttack(attacker, defender, 1.0f);
@@ -211,7 +211,7 @@ void test_armor_blocking() {
     assert(defender.wounds.empty());
 
     // Attack with contondant weapon (should hit)
-    Weapon hammer{"Hammer", WeaponWeight::Moyen, PhysicalDamageType::Contondant, 100, 100, 15, 8};
+    Weapon hammer{"Hammer", WeaponWeight::Moyen, DamageType::Contondant, 100, 100, 15, 8};
     attacker.weapon = hammer;
     result = CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(result != -99);
@@ -227,7 +227,7 @@ void test_stat_penalties_rounding() {
     assert(std::abs(fighter.getEffectiveVitesse() - 10.0f) < 0.001f);
 
     // Apply a Stade 3 wound (-15% force & vitesse)
-    fighter.applyWound(3, PhysicalDamageType::Contondant);
+    fighter.applyWound(3, DamageType::Contondant);
     // Effective force = 10.25 * 0.85 = 8.7125. Rounded up to 0.25: 8.75.
     assert(std::abs(fighter.getEffectiveForce() - 8.75f) < 0.001f);
     // Effective vitesse = 10.0 * 0.85 = 8.5. Rounded up: 8.5.
@@ -235,7 +235,7 @@ void test_stat_penalties_rounding() {
 
     // Apply a Stade 4 wound (-30% force & vitesse)
     fighter.wounds.clear();
-    fighter.applyWound(4, PhysicalDamageType::Contondant);
+    fighter.applyWound(4, DamageType::Contondant);
     // Effective force = 10.25 * 0.70 = 7.175. Rounded up to 0.25: 7.25.
     assert(std::abs(fighter.getEffectiveForce() - 7.25f) < 0.001f);
 }
@@ -268,7 +268,7 @@ void test_parry_dodge() {
 
     // Let's make attacker stronger so they deal positive damage
     attacker.force = 15.0f; // diff at level 1: 5.0 -> effectiveness 5 (Domination)
-    Weapon lightWeapon{"Light Sword", WeaponWeight::Leger, PhysicalDamageType::Tranchant, 100, 100, 10, 5};
+    Weapon lightWeapon{"Light Sword", WeaponWeight::Leger, DamageType::Tranchant, 100, 100, 10, 5};
     attacker.weapon = lightWeapon;
     // Execute attack: should be parried (effectiveness 5 reduced by 10% -> 4)
     result = CombatSystem::executeAttack(attacker, defender, 1.0f);
@@ -282,7 +282,7 @@ void test_parry_dodge() {
     defender.passives.push_back("Bouclier en métal");
     CombatSystem::executeParry(defender, 1.0f);
     
-    Weapon sword{"Sword", WeaponWeight::Moyen, PhysicalDamageType::Tranchant, 100, 100, 15, 8};
+    Weapon sword{"Sword", WeaponWeight::Moyen, DamageType::Tranchant, 100, 100, 15, 8};
     attacker.weapon = sword;
     
     result = CombatSystem::executeAttack(attacker, defender, 1.0f);
@@ -303,7 +303,7 @@ void test_equipment_loading() {
     assert(espadon.has_value());
     assert(espadon->name == "Espadon");
     assert(espadon->type == WeaponWeight::Lourd);
-    assert(espadon->damageType == PhysicalDamageType::Tranchant);
+    assert(espadon->damageType == DamageType::Tranchant);
     assert(espadon->durability == 150);
 
     auto armors = DataStore::getInstance().getAvailableArmorNames();
@@ -348,7 +348,7 @@ void test_weapon_durability_and_multipliers() {
     // eff_weapon = calculateStatDifference(10, 10, 1) = 0.
     // durabilityLoss for eff_weapon=0 is 5.
     // Weapon starts at 10 durability. It should end at 5.
-    Weapon weakWeapon{"Weak Sword", WeaponWeight::Leger, PhysicalDamageType::Tranchant, 10, 10, 10, 5};
+    Weapon weakWeapon{"Weak Sword", WeaponWeight::Leger, DamageType::Tranchant, 10, 10, 10, 5};
     attacker.weapon = weakWeapon;
     attacker.physicalReserve = 100.0f;
     res = CombatSystem::executeAttack(attacker, defender, 1.0f);
@@ -365,12 +365,176 @@ void test_weapon_durability_and_multipliers() {
     // Now that weapon has 0 durability:
     // Stamina cost should be 7.5 (Pugilat/bare-hands) instead of 12.5 (if it was a lourd weapon)
     // Damage multiplier should be x0.95.
-    Weapon brokenHeavy{"Broken Greatsword", WeaponWeight::Lourd, PhysicalDamageType::Tranchant, 0, 150, 20, 10};
+    Weapon brokenHeavy{"Broken Greatsword", WeaponWeight::Lourd, DamageType::Tranchant, 0, 150, 20, 10};
     attacker.weapon = brokenHeavy;
     attacker.physicalReserve = 100.0f;
     // Attack: cost should be 7.5 because weapon is broken!
     res = CombatSystem::executeAttack(attacker, defender, 1.0f);
     assert(std::abs(attacker.physicalReserve - 92.5f) < 0.001f); // 100 - 7.5 = 92.5
+}
+
+void test_class_immunities() {
+    Entity grimm("Grimm Entity");
+    grimm.characterClass = "Grimm";
+    assert(grimm.isImmuneToPoison());
+    assert(grimm.isImmuneToCharm());
+    assert(!grimm.isImmuneToStun());
+    assert(std::abs(grimm.getFireDamageResistanceBonus() - 0.0f) < 0.001f);
+
+    Entity aegis("Aegis Entity");
+    aegis.characterClass = "AEGIS";
+    assert(!aegis.isImmuneToPoison());
+    assert(!aegis.isImmuneToCharm());
+    assert(aegis.isImmuneToStun());
+
+    Entity forgemaster("Forgemaster Entity");
+    forgemaster.characterClass = "FORGEMAITRE";
+    assert(std::abs(forgemaster.getFireDamageResistanceBonus() - 0.10f) < 0.001f);
+
+    Entity arachnee("Arachnee Entity");
+    arachnee.characterClass = "ARACHNEE";
+    assert(arachnee.isImmuneToPoison());
+    assert(arachnee.isImmuneToCharm());
+}
+
+void test_aegis_parry_reduction() {
+    Entity attacker("Attacker");
+    Entity defender("Defender");
+    defender.characterClass = "AEGIS";
+    
+    attacker.stade = 1;
+    defender.stade = 1;
+    attacker.force = 15.0f; // diff = 5 -> effectiveness 5 (Domination)
+    defender.resistance = 10.0f;
+    defender.physicalReserve = 100.0f;
+
+    Weapon lightWeapon{"Light Sword", WeaponWeight::Leger, DamageType::Tranchant, 100, 100, 10, 5};
+    attacker.weapon = lightWeapon;
+
+    // Prepare parry
+    CombatSystem::executeParry(defender, 1.0f);
+    assert(defender.activeParries == 1);
+
+    // Attack: effectiveness 5 parried by Aegis (25% reduction -> 5 * 0.75 = 3)
+    int result = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(result == 3);
+    assert(defender.wounds.size() == 1);
+    assert(defender.wounds[0].effectiveness == 3);
+}
+
+void test_aegis_delayed_wound_debuff() {
+    Entity fighter("Aegis Fighter");
+    fighter.characterClass = "AEGIS";
+    fighter.force = 10.0f;
+    fighter.currentTurn = 1;
+
+    // Apply Stade 3 wound at turn 1
+    fighter.applyWound(3, DamageType::Contondant);
+
+    // At turn 1, debuff should be delayed (0 turns elapsed)
+    assert(std::abs(fighter.getEffectiveForce() - 10.0f) < 0.001f);
+
+    // At turn 2, debuff should still be delayed (1 turn elapsed)
+    fighter.currentTurn = 2;
+    assert(std::abs(fighter.getEffectiveForce() - 10.0f) < 0.001f);
+
+    // At turn 3, debuff should apply (2 turns elapsed)
+    fighter.currentTurn = 3;
+    // 10.0 * 0.85 = 8.5. Rounded up to 0.25: 8.5.
+    assert(std::abs(fighter.getEffectiveForce() - 8.5f) < 0.001f);
+}
+
+void test_arachnee_armor_wear() {
+    Entity attacker("Attacker");
+    attacker.characterClass = "ARACHNEE";
+    Entity defender("Defender");
+    
+    attacker.stade = 1;
+    defender.stade = 1;
+    attacker.force = 10.0f;
+    defender.resistance = 10.0f;
+
+    // Equip skin/leather armor (initial durability = 10)
+    Armor leatherArmor{"Leather Armor", ArmorMaterial::Peau, 10, 10, 10, 0};
+    defender.armor = leatherArmor;
+
+    // Attack with conondant weapon
+    Weapon hammer{"Hammer", WeaponWeight::Moyen, DamageType::Contondant, 100, 100, 15, 8};
+    attacker.weapon = hammer;
+
+    // eff_armor = calculateStatDifference(10, 10, 1) = 0.
+    // Durability loss for eff_armor=0 is 5.
+    // Since attacker is Arachnee and material is Peau, durability loss is doubled: 5 * 2 = 10.
+    // Armor should break (durability becomes 0).
+    int result = CombatSystem::executeAttack(attacker, defender, 1.0f);
+    assert(defender.armor->durability == 0);
+}
+
+void test_fire_resistance() {
+    // Test base case: defender has no fire resistance
+    Entity attacker("Attacker");
+    Entity defender1("Defender 1");
+    attacker.stade = 1;
+    defender1.stade = 1;
+    attacker.force = 15.0f;
+    defender1.resistance = 10.0f; // diff = 5 -> effectiveness 5 (Domination)
+    
+    // Weapon deals fire damage
+    Weapon fireSword{"Fire Sword", WeaponWeight::Leger, DamageType::Feu, 100, 100, 10, 5};
+    attacker.weapon = fireSword;
+
+    int result1 = CombatSystem::executeAttack(attacker, defender1, 1.0f);
+    assert(result1 == 5); // 5 is unreduced
+
+    // Test Forge Maître (+10% fire resistance)
+    Entity defender2("Defender 2 (Forge Maître)");
+    defender2.characterClass = "FORGEMAITRE";
+    defender2.stade = 1;
+    defender2.resistance = 10.0f;
+
+    // 5 * (1 - 0.10) = 4.5 -> casted to int is 4
+    int result2 = CombatSystem::executeAttack(attacker, defender2, 1.0f);
+    assert(result2 == 4);
+
+    // Test custom resistance modifier (e.g. +20% fire resistance)
+    Entity defender3("Defender 3 (Resistant)");
+    defender3.stade = 1;
+    defender3.resistance = 10.0f;
+    defender3.damageResistances[DamageType::Feu] = 0.20f;
+
+    // 5 * (1 - 0.20) = 4
+    int result3 = CombatSystem::executeAttack(attacker, defender3, 1.0f);
+    assert(result3 == 4);
+}
+
+void test_magical_slashing_damage() {
+    Entity attacker("Mage Attacker");
+    Entity defender("Fighter Defender");
+
+    attacker.stade = 1;
+    defender.stade = 1;
+    attacker.forceMagique = 13.0f; // Attacker has 13 magical force
+    attacker.force = 5.0f;         // But only 5 physical force
+    
+    defender.resistance = 10.0f;        // Defender has 10 physical resistance
+    defender.resistanceMagique = 8.0f;  // Defender has 8 magical resistance
+
+    // 1. Resolve physical attack (should use Force vs Resistance: 5 vs 10 -> diff = -5 -> effectiveness negative/0)
+    Weapon sword{"Sword", WeaponWeight::Leger, DamageType::Tranchant, 100, 100, 10, 5};
+    attacker.weapon = sword;
+    
+    int physicalRes = CombatSystem::executeAttack(attacker, defender, 1.0f, DamageNature::Physique);
+    assert(physicalRes < 0);
+
+    // 2. Resolve magical attack (should use ForceMagique vs ResistanceMagique: 15 vs 8 -> diff = 7 -> effectiveness 5 (Domination))
+    int magicalRes = CombatSystem::executeAttack(attacker, defender, 1.0f, DamageNature::Magique, DamageType::Tranchant);
+    assert(magicalRes == 5); 
+    
+    // Check that defender received a Tranchant wound (causing bleeding)
+    assert(!defender.wounds.empty());
+    assert(defender.wounds[0].effectiveness == 5);
+    assert(defender.wounds[0].damageType == DamageType::Tranchant);
+    assert(defender.getBleedingRate() == 3); // Stade 5 Tranchant is rate 3
 }
 
 int main() {
@@ -396,6 +560,12 @@ int main() {
     RUN_TEST(test_parry_dodge);
     RUN_TEST(test_equipment_loading);
     RUN_TEST(test_weapon_durability_and_multipliers);
+    RUN_TEST(test_class_immunities);
+    RUN_TEST(test_aegis_parry_reduction);
+    RUN_TEST(test_aegis_delayed_wound_debuff);
+    RUN_TEST(test_arachnee_armor_wear);
+    RUN_TEST(test_fire_resistance);
+    RUN_TEST(test_magical_slashing_damage);
 
     std::cout << "All core unit tests passed successfully!" << std::endl;
     return 0;
