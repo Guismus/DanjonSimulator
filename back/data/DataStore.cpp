@@ -3,6 +3,8 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <print>
+#include <cstdio>
 
 namespace fs = std::filesystem;
 
@@ -11,8 +13,8 @@ DataStore& DataStore::getInstance() {
     return instance;
 }
 
-bool DataStore::loadSystemData(const std::string& filepath) {
-    std::ifstream file(filepath);
+bool DataStore::loadSystemData(std::string_view filepath) {
+    std::ifstream file{std::filesystem::path(filepath)};
     if (!file.is_open()) return false;
     
     try {
@@ -28,13 +30,13 @@ bool DataStore::loadSystemData(const std::string& filepath) {
         CombatSystem::setDiffStatsTable(table);
         return true;
     } catch (std::exception& e) {
-        std::cerr << "Failed to parse system data: " << e.what() << std::endl;
+        std::println(stderr, "Failed to parse system data: {}", e.what());
         return false;
     }
 }
 
-bool DataStore::loadEnergySystem(const std::string& filepath) {
-    std::ifstream file(filepath);
+bool DataStore::loadEnergySystem(std::string_view filepath) {
+    std::ifstream file{std::filesystem::path(filepath)};
     if (!file.is_open()) return false;
     try {
         json j;
@@ -61,7 +63,7 @@ bool DataStore::loadEnergySystem(const std::string& filepath) {
         }
         return true;
     } catch (std::exception& e) {
-        std::cerr << "Failed to parse energy system: " << e.what() << std::endl;
+        std::println(stderr, "Failed to parse energy system: {}", e.what());
         return false;
     }
 }
@@ -72,17 +74,18 @@ const EnergyThresholds* DataStore::getEnergyThresholds(int rank) const {
     return nullptr;
 }
 
-bool DataStore::loadArmors(const std::string& directoryPath) {
-    if (!fs::exists(directoryPath)) {
-        std::cerr << "Armor directory does not exist: " << directoryPath << std::endl;
+bool DataStore::loadArmors(std::string_view directoryPath) {
+    fs::path dir{directoryPath};
+    if (!fs::exists(dir)) {
+        std::println(stderr, "Armor directory does not exist: {}", directoryPath);
         return false;
     }
     bool success = true;
-    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+    for (const auto& entry : fs::directory_iterator(dir)) {
         if (entry.path().extension() == ".json") {
             std::ifstream file(entry.path());
             if (!file.is_open()) {
-                std::cerr << "Failed to open armor file: " << entry.path() << std::endl;
+                std::println(stderr, "Failed to open armor file: {}", entry.path().string());
                 success = false;
                 continue;
             }
@@ -120,7 +123,7 @@ bool DataStore::loadArmors(const std::string& directoryPath) {
                 std::string key = entry.path().stem().string();
                 armorTemplates[key] = armor;
             } catch (json::parse_error& e) {
-                std::cerr << "JSON parse error in armor " << entry.path() << ": " << e.what() << std::endl;
+                std::println(stderr, "JSON parse error in armor {}: {}", entry.path().string(), e.what());
                 success = false;
             }
         }
@@ -128,13 +131,14 @@ bool DataStore::loadArmors(const std::string& directoryPath) {
     return success;
 }
 
-bool DataStore::loadEntities(const std::string& directoryPath) {
+bool DataStore::loadEntities(std::string_view directoryPath) {
     bool success = true;
-    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+    fs::path dir{directoryPath};
+    for (const auto& entry : fs::directory_iterator(dir)) {
         if (entry.path().extension() == ".json") {
             std::ifstream file(entry.path());
             if (!file.is_open()) {
-                std::cerr << "Failed to open " << entry.path() << std::endl;
+                std::println(stderr, "Failed to open {}", entry.path().string());
                 success = false;
                 continue;
             }
@@ -228,7 +232,7 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
 
                 entityTemplates.emplace(name, entity);
             } catch (json::parse_error& e) {
-                std::cerr << "JSON parse error in " << entry.path() << ": " << e.what() << std::endl;
+                std::println(stderr, "JSON parse error in {}: {}", entry.path().string(), e.what());
                 success = false;
             }
         }
@@ -236,7 +240,7 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
     return success;
 }
 
-std::optional<Entity> DataStore::getEntityTemplate(const std::string& name) const {
+std::optional<Entity> DataStore::getEntityTemplate(std::string_view name) const {
     auto it = entityTemplates.find(name);
     if (it != entityTemplates.end()) {
         return it->second;
@@ -252,17 +256,18 @@ std::vector<std::string> DataStore::getAvailableEntityNames() const {
     return names;
 }
 
-bool DataStore::loadWeapons(const std::string& directoryPath) {
-    if (!fs::exists(directoryPath)) {
-        std::cerr << "Weapon directory does not exist: " << directoryPath << std::endl;
+bool DataStore::loadWeapons(std::string_view directoryPath) {
+    fs::path dir{directoryPath};
+    if (!fs::exists(dir)) {
+        std::println(stderr, "Weapon directory does not exist: {}", directoryPath);
         return false;
     }
     bool success = true;
-    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+    for (const auto& entry : fs::directory_iterator(dir)) {
         if (entry.path().extension() == ".json") {
             std::ifstream file(entry.path());
             if (!file.is_open()) {
-                std::cerr << "Failed to open weapon file: " << entry.path() << std::endl;
+                std::println(stderr, "Failed to open weapon file: {}", entry.path().string());
                 success = false;
                 continue;
             }
@@ -311,7 +316,7 @@ bool DataStore::loadWeapons(const std::string& directoryPath) {
                 std::string key = entry.path().stem().string();
                 weaponTemplates[key] = weapon;
             } catch (json::parse_error& e) {
-                std::cerr << "JSON parse error in weapon " << entry.path() << ": " << e.what() << std::endl;
+                std::println(stderr, "JSON parse error in weapon {}: {}", entry.path().string(), e.what());
                 success = false;
             }
         }
@@ -335,7 +340,7 @@ std::vector<std::string> DataStore::getAvailableArmorNames() const {
     return names;
 }
 
-std::optional<Weapon> DataStore::getWeaponTemplate(const std::string& name) const {
+std::optional<Weapon> DataStore::getWeaponTemplate(std::string_view name) const {
     for (const auto& pair : weaponTemplates) {
         if (pair.second.name == name) {
             return pair.second;
@@ -344,7 +349,7 @@ std::optional<Weapon> DataStore::getWeaponTemplate(const std::string& name) cons
     return std::nullopt;
 }
 
-std::optional<Armor> DataStore::getArmorTemplate(const std::string& name) const {
+std::optional<Armor> DataStore::getArmorTemplate(std::string_view name) const {
     for (const auto& pair : armorTemplates) {
         if (pair.second.name == name) {
             return pair.second;

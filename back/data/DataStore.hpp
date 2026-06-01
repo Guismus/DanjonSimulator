@@ -1,9 +1,11 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include <map>
 #include <optional>
+#include <functional>
 #include "../core/entity.hpp"
 #include <json.hpp>
 
@@ -13,18 +15,18 @@ class DataStore {
 public:
     static DataStore& getInstance();
 
-    bool loadSystemData(const std::string& filepath);
-    bool loadEnergySystem(const std::string& filepath);
-    bool loadArmors(const std::string& directoryPath);
-    bool loadWeapons(const std::string& directoryPath);
-    bool loadEntities(const std::string& directoryPath);
+    bool loadSystemData(std::string_view filepath);
+    bool loadEnergySystem(std::string_view filepath);
+    bool loadArmors(std::string_view directoryPath);
+    bool loadWeapons(std::string_view directoryPath);
+    bool loadEntities(std::string_view directoryPath);
     
-    std::optional<Entity> getEntityTemplate(const std::string& name) const;
+    std::optional<Entity> getEntityTemplate(std::string_view name) const;
     std::vector<std::string> getAvailableEntityNames() const;
     std::vector<std::string> getAvailableWeaponNames() const;
     std::vector<std::string> getAvailableArmorNames() const;
-    std::optional<Weapon> getWeaponTemplate(const std::string& name) const;
-    std::optional<Armor> getArmorTemplate(const std::string& name) const;
+    std::optional<Weapon> getWeaponTemplate(std::string_view name) const;
+    std::optional<Armor> getArmorTemplate(std::string_view name) const;
     const EnergyThresholds* getEnergyThresholds(int rank) const;
     float getDmgMultMainsNu() const { return dmgMultMainsNu; }
     float getDmgMultLegere() const { return dmgMultLegere; }
@@ -38,9 +40,9 @@ private:
     DataStore(const DataStore&) = delete;
     DataStore& operator=(const DataStore&) = delete;
 
-    std::map<std::string, Entity> entityTemplates;
-    std::map<std::string, Armor> armorTemplates;
-    std::map<std::string, Weapon> weaponTemplates;
+    std::map<std::string, Entity, std::less<>> entityTemplates;
+    std::map<std::string, Armor, std::less<>> armorTemplates;
+    std::map<std::string, Weapon, std::less<>> weaponTemplates;
     std::map<int, EnergyThresholds> rankThresholds;
 
     float dmgMultMainsNu = 0.95f;

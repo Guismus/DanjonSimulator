@@ -28,6 +28,7 @@ static std::string getDamageTypeName(DamageType type) {
         case DamageType::Contondant: return "Contondant";
         case DamageType::Tranchant: return "Tranchant";
         case DamageType::Feu: return "Feu";
+        case DamageType::Corrosion: return "Corrosion";
     }
     return "Inconnu";
 }
