@@ -9,25 +9,7 @@
 #include <QSpinBox>
 #include <QJsonObject>
 #include <optional>
-#include "../../back/core/entity.hpp"
-
-enum class ActionType {
-    Attack,
-    Parry,
-    Dodge,
-    Magic
-};
-
-enum class ControlMode {
-    Manual,
-    Script,
-    TCP
-};
-
-struct QueuedAction {
-    ActionType type;
-    float overclockMultiplier = 1.0f;
-};
+#include "../../back/core/simulator.hpp"
 
 class RunPage : public QWidget {
     Q_OBJECT
@@ -75,16 +57,7 @@ private:
     QPushButton* p2CancelBtn;
     QTextEdit* combatLog;
 
-    std::optional<Entity> fighter1;
-    std::optional<Entity> fighter2;
-    
-    std::vector<QueuedAction> p1Actions;
-    std::vector<QueuedAction> p2Actions;
-    int p1FreeActions;
-    int p2FreeActions;
-    int currentTurn = 1;
-    bool p1Finished = false;
-    bool p2Finished = false;
+    Simulator simulator;
 
     void loadEntities();
     void startCombat();
@@ -93,13 +66,6 @@ private:
     void saveCombatLog();
     void checkResolve();
 
-    void fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>& actions, int freeActions, ControlMode mode, int playerNum);
     QString queryScript(const QJsonObject& state, int playerNum);
     QString queryTCP(const QJsonObject& state, int playerNum);
-    QJsonObject serializeState(const Entity& active, const std::vector<QueuedAction>& activeActions,
-                               const Entity& opponent, const std::vector<QueuedAction>& opponentActions);
-    QJsonObject serializeEntity(const Entity& entity, const std::vector<QueuedAction>& queuedActions, int freeActions);
-    
-    std::vector<float> computeOverclockMultipliers(const Entity& entity, const std::vector<ActionType>& actions, int baseFreeActions);
-    float getNextMultiplier(const Entity& entity, const std::vector<QueuedAction>& currentActions, ActionType nextType, int baseFreeActions);
 };

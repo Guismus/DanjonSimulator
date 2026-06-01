@@ -537,6 +537,59 @@ void test_magical_slashing_damage() {
     assert(defender.getBleedingRate() == 3); // Stade 5 Tranchant is rate 3
 }
 
+#include "back/core/simulator.hpp"
+
+void test_simulator() {
+    Simulator sim;
+    Entity f1("F1");
+    Entity f2("F2");
+    f1.stade = 1;
+    f2.stade = 1;
+    f1.vitesse = 10.0f;
+    f2.vitesse = 10.0f;
+    f1.blood = 32.0f;
+    f1.maxPhysicalReserve = 100.0f;
+    f1.physicalReserve = 100.0f;
+    f2.blood = 32.0f;
+    f2.maxPhysicalReserve = 100.0f;
+    f2.physicalReserve = 100.0f;
+    
+    sim.startCombat(f1, f2, ControlMode::Manual, ControlMode::Manual);
+    
+    assert(sim.getFighter1().has_value());
+    assert(sim.getFighter2().has_value());
+    assert(sim.getCurrentTurn() == 1);
+    assert(!sim.isP1Finished());
+    assert(!sim.isP2Finished());
+    
+    // Add manual actions
+    sim.addActionP1(ActionType::Attack);
+    assert(sim.getP1Actions().size() == 1);
+    assert(sim.getP1Actions()[0].type == ActionType::Attack);
+    
+    sim.popActionP1();
+    assert(sim.getP1Actions().empty());
+    
+    // Test overclocking calculations
+    sim.addActionP1(ActionType::Attack); // 1st free
+    sim.addActionP1(ActionType::Attack); // 2nd free
+    sim.addActionP1(ActionType::Attack); // 3rd (overclocked)
+    
+    assert(sim.getP1Actions().size() == 3);
+    assert(sim.getP1Actions()[0].overclockMultiplier == 1.0f);
+    assert(sim.getP1Actions()[1].overclockMultiplier == 1.0f);
+    assert(sim.getP1Actions()[2].overclockMultiplier == 2.0f);
+    
+    // Test resolve
+    sim.setP1Finished(true);
+    sim.setP2Finished(true);
+    assert(sim.checkResolve());
+    
+    Simulator::TurnResult result = sim.resolveTurn();
+    assert(!result.logs.empty());
+    assert(sim.getCurrentTurn() == 2);
+}
+
 int main() {
     // 1. Initialiser le DataStore avec les fichiers JSON
     if (!DataStore::getInstance().loadSystemData("data/diff_stats.json")) {
@@ -566,6 +619,7 @@ int main() {
     RUN_TEST(test_arachnee_armor_wear);
     RUN_TEST(test_fire_resistance);
     RUN_TEST(test_magical_slashing_damage);
+    RUN_TEST(test_simulator);
 
     std::cout << "All core unit tests passed successfully!" << std::endl;
     return 0;

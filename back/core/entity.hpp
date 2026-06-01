@@ -29,6 +29,24 @@ enum class ArmorMaterial {
     Mineral
 };
 
+enum class ActionType {
+    Attack,
+    Parry,
+    Dodge,
+    Magic
+};
+
+enum class ControlMode {
+    Manual,
+    Script,
+    TCP
+};
+
+struct QueuedAction {
+    ActionType type;
+    float overclockMultiplier = 1.0f;
+};
+
 struct Weapon {
     std::string name;
     WeaponWeight type;
