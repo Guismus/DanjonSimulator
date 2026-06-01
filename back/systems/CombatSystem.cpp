@@ -1,7 +1,6 @@
 #include "CombatSystem.hpp"
 #include "../data/DataStore.hpp"
 #include <algorithm>
-#include <iostream>
 #include <cmath>
 #include <array>
 #include <vector>

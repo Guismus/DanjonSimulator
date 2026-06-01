@@ -4,7 +4,8 @@
 #include "../back/data/DataStore.hpp"
 #include <cassert>
 #include <cmath>
-#include <iostream>
+#include <print>
+#include <cstdio>
 #include <vector>
 
 void test_simulator() {
@@ -81,7 +82,7 @@ void test_overclock_simulation() {
     auto opt2 = DataStore::getInstance().getEntityTemplate("Agatha Eterm");
     
     if (!opt1 || !opt2) {
-        std::cerr << "[WARNING] Agatha Eterm not found in entities folder, skipping overclock simulation test." << std::endl;
+        std::println(stderr, "[WARNING] Agatha Eterm not found in entities folder, skipping overclock simulation test.");
         return;
     }
     
@@ -103,10 +104,10 @@ void test_overclock_simulation() {
     int firstDone = 0;
     int secondDone = 0;
     
-    std::cout << "DEBUG Overclock simulation:" << std::endl;
-    std::cout << "  v1=" << v1 << ", v2=" << v2 << ", firstFree=" << firstFree << ", secondFree=" << secondFree << std::endl;
-    std::cout << "  fighter1 force=" << fighter1.force << ", resistance=" << fighter1.resistance << ", physicalReserve=" << fighter1.physicalReserve << std::endl;
-    std::cout << "  fighter2 force=" << fighter2.force << ", resistance=" << fighter2.resistance << ", physicalReserve=" << fighter2.physicalReserve << std::endl;
+    std::println("DEBUG Overclock simulation:");
+    std::println("  v1={}, v2={}, firstFree={}, secondFree={}", v1, v2, firstFree, secondFree);
+    std::println("  fighter1 force={}, resistance={}, physicalReserve={}", fighter1.force, fighter1.resistance, fighter1.physicalReserve);
+    std::println("  fighter2 force={}, resistance={}, physicalReserve={}", fighter2.force, fighter2.resistance, fighter2.physicalReserve);
 
     while ((firstDone < firstQueued || secondDone < secondQueued) && !first->isDead() && !second->isDead()) {
         if (firstDone < firstQueued) {

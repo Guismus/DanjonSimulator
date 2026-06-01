@@ -2,7 +2,6 @@
 #include "../back/systems/CombatSystem.hpp"
 #include <cassert>
 #include <cmath>
-#include <iostream>
 
 void test_wound_stacking() {
     Entity fighter("Test Fighter");

@@ -3,7 +3,6 @@
 #include "../back/data/DataStore.hpp"
 #include <cassert>
 #include <cmath>
-#include <iostream>
 
 void test_speed_free_actions() {
     float v1 = 12.0f;

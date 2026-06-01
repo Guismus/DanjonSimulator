@@ -4,7 +4,6 @@
 #include "../back/data/DataStore.hpp"
 #include <cassert>
 #include <cmath>
-#include <iostream>
 
 void test_armor_blocking() {
     Entity attacker("Attacker");

@@ -1,10 +1,11 @@
-#include <iostream>
+#include <print>
+#include <cstdio>
 
 #define RUN_TEST(test_func) \
     do { \
-        std::cout << "[RUN] " << #test_func << "..." << std::endl; \
+        std::println("[RUN] {}...", #test_func); \
         test_func(); \
-        std::cout << "[SUCCESS] " << #test_func << std::endl; \
+        std::println("[SUCCESS] {}", #test_func); \
     } while (0)
 
 // Wound tests (test_wound.cpp)
@@ -35,15 +36,15 @@ void test_advanced_wear_and_magic();
 int main() {
     // 1. Initialiser le DataStore avec les fichiers JSON
     if (!DataStore::getInstance().loadSystemData("data/diff_stats.json")) {
-        std::cerr << "Failed to load system data" << std::endl;
+        std::println(stderr, "Failed to load system data");
         return 1;
     }
     if (!DataStore::getInstance().loadEnergySystem("data/energy_system.json")) {
-        std::cerr << "Failed to load energy system" << std::endl;
+        std::println(stderr, "Failed to load energy system");
         return 1;
     }
 
-    std::cout << "Starting unit tests suite..." << std::endl;
+    std::println("Starting unit tests suite...");
 
     // Wound tests
     RUN_TEST(test_wound_stacking);
@@ -68,6 +69,6 @@ int main() {
     // Advanced wear and magic tests
     RUN_TEST(test_advanced_wear_and_magic);
 
-    std::cout << "All unit tests completed successfully!" << std::endl;
+    std::println("All unit tests completed successfully!");
     return 0;
 }

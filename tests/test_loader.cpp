@@ -3,7 +3,6 @@
 #include "../back/data/DataStore.hpp"
 #include <cassert>
 #include <cmath>
-#include <iostream>
 
 void test_equipment_loading() {
     assert(DataStore::getInstance().loadWeapons("data/Equipement/Arme"));
