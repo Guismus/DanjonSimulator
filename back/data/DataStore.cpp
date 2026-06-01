@@ -167,9 +167,9 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 entity.rank = rankVal;
                 
                 if (j.contains("characterClass") && j["characterClass"].is_string()) {
-                    entity.characterClass = j["characterClass"].get<std::string>();
+                    entity.setClass(j["characterClass"].get<std::string>());
                 } else if (j.contains("class") && j["class"].is_string()) {
-                    entity.characterClass = j["class"].get<std::string>();
+                    entity.setClass(j["class"].get<std::string>());
                 }
 
                 if (j.contains("passives") && j["passives"].is_array()) {
@@ -199,8 +199,17 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                     entity.maxPhysicalReserve = t->maxReserve;
                     entity.physicalReserve = t->maxReserve; // Start at max
                 }
-
-
+                // Override from JSON if present
+                entity.wearMultiplierOnPeau = j.value("wearMultiplierOnPeau", entity.wearMultiplierOnPeau);
+                entity.wearMultiplierOnFibre = j.value("wearMultiplierOnFibre", entity.wearMultiplierOnFibre);
+                entity.wearMultiplierOnMineral = j.value("wearMultiplierOnMineral", entity.wearMultiplierOnMineral);
+                entity.freeParriesPerTurn = j.value("freeParriesPerTurn", entity.freeParriesPerTurn);
+                entity.freeAttacksPerTurn = j.value("freeAttacksPerTurn", entity.freeAttacksPerTurn);
+                entity.immuneToPoison = j.value("immuneToPoison", entity.immuneToPoison);
+                entity.immuneToCharm = j.value("immuneToCharm", entity.immuneToCharm);
+                entity.immuneToStun = j.value("immuneToStun", entity.immuneToStun);
+                entity.woundDebuffDelayTurns = j.value("woundDebuffDelayTurns", entity.woundDebuffDelayTurns);
+                entity.fireDamageResistanceBonus = j.value("fireDamageResistanceBonus", entity.fireDamageResistanceBonus);
 
                 entityTemplates.emplace(name, entity);
             } catch (json::parse_error& e) {

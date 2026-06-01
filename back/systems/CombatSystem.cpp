@@ -195,11 +195,8 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
             durabilityLoss = armor.durability;
         }
         
-        if (attacker.getNormalizedClass() == "ARACHNEE") {
-            if (armor.material == ArmorMaterial::Peau || armor.material == ArmorMaterial::Fibre) {
-                durabilityLoss *= 2;
-            }
-        }
+        float wearMult = attacker.getWearMultiplierOn(armor.material);
+        durabilityLoss = static_cast<int>(durabilityLoss * wearMult);
         
         armor.durability = std::max(0, armor.durability - durabilityLoss);
         

@@ -375,24 +375,24 @@ void test_weapon_durability_and_multipliers() {
 
 void test_class_immunities() {
     Entity grimm("Grimm Entity");
-    grimm.characterClass = "Grimm";
+    grimm.setClass("Grimm");
     assert(grimm.isImmuneToPoison());
     assert(grimm.isImmuneToCharm());
     assert(!grimm.isImmuneToStun());
     assert(std::abs(grimm.getFireDamageResistanceBonus() - 0.0f) < 0.001f);
 
     Entity aegis("Aegis Entity");
-    aegis.characterClass = "AEGIS";
+    aegis.setClass("AEGIS");
     assert(!aegis.isImmuneToPoison());
     assert(!aegis.isImmuneToCharm());
     assert(aegis.isImmuneToStun());
 
     Entity forgemaster("Forgemaster Entity");
-    forgemaster.characterClass = "FORGEMAITRE";
+    forgemaster.setClass("FORGEMAITRE");
     assert(std::abs(forgemaster.getFireDamageResistanceBonus() - 0.10f) < 0.001f);
 
     Entity arachnee("Arachnee Entity");
-    arachnee.characterClass = "ARACHNEE";
+    arachnee.setClass("ARACHNEE");
     assert(arachnee.isImmuneToPoison());
     assert(arachnee.isImmuneToCharm());
 }
@@ -400,7 +400,7 @@ void test_class_immunities() {
 void test_aegis_parry_reduction() {
     Entity attacker("Attacker");
     Entity defender("Defender");
-    defender.characterClass = "AEGIS";
+    defender.setClass("AEGIS");
     
     attacker.stade = 1;
     defender.stade = 1;
@@ -424,7 +424,7 @@ void test_aegis_parry_reduction() {
 
 void test_aegis_delayed_wound_debuff() {
     Entity fighter("Aegis Fighter");
-    fighter.characterClass = "AEGIS";
+    fighter.setClass("AEGIS");
     fighter.force = 10.0f;
     fighter.currentTurn = 1;
 
@@ -446,7 +446,7 @@ void test_aegis_delayed_wound_debuff() {
 
 void test_arachnee_armor_wear() {
     Entity attacker("Attacker");
-    attacker.characterClass = "ARACHNEE";
+    attacker.setClass("ARACHNEE");
     Entity defender("Defender");
     
     attacker.stade = 1;
@@ -488,7 +488,7 @@ void test_fire_resistance() {
 
     // Test Forge Maître (+10% fire resistance)
     Entity defender2("Defender 2 (Forge Maître)");
-    defender2.characterClass = "FORGEMAITRE";
+    defender2.setClass("FORGEMAITRE");
     defender2.stade = 1;
     defender2.resistance = 10.0f;
 

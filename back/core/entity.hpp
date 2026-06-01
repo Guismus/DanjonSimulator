@@ -126,8 +126,20 @@ public:
     int activeParries = 0;
     int activeDodges = 0;
 
+    float wearMultiplierOnFibre = 1.0f;
+    float wearMultiplierOnPeau = 1.0f;
+    float wearMultiplierOnMineral = 1.0f;
+    int freeParriesPerTurn = 0;
+    int freeAttacksPerTurn = 0;
+    bool immuneToPoison = false;
+    bool immuneToCharm = false;
+    bool immuneToStun = false;
+    int woundDebuffDelayTurns = 0;
+    float fireDamageResistanceBonus = 0.0f;
+
     // Methods
     const std::string& getName() const;
+    void setClass(const std::string& className);
     void applyWound(int effectiveness, DamageType type);
     void applyBleeding(int severity);
     bool isDead() const;
@@ -142,6 +154,7 @@ public:
     float getEffectiveForceMagique() const;
     float getEffectiveResistanceMagique() const;
     bool hasPassive(const std::string& passiveName) const;
+    float getWearMultiplierOn(ArmorMaterial material) const;
 
     int currentTurn = 1;
     std::string getNormalizedClass() const;

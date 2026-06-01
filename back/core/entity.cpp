@@ -14,6 +14,28 @@ const std::string& Entity::getName() const {
     return name;
 }
 
+void Entity::setClass(const std::string& className) {
+    characterClass = className;
+    std::string klass = getNormalizedClass();
+    if (klass == "ARACHNEE") {
+        wearMultiplierOnPeau = 2.0f;
+        wearMultiplierOnFibre = 2.0f;
+        immuneToPoison = true;
+        immuneToCharm = true;
+    } else if (klass == "AEGIS") {
+        freeParriesPerTurn = 1;
+        immuneToStun = true;
+        woundDebuffDelayTurns = 2;
+    } else if (klass == "FANTOME") {
+        freeAttacksPerTurn = 1;
+    } else if (klass == "FORGEMAITRE") {
+        fireDamageResistanceBonus = 0.10f;
+    } else if (klass == "GRIMM") {
+        immuneToPoison = true;
+        immuneToCharm = true;
+    }
+}
+
 void Entity::applyWound(int eff, DamageType type) {
     // Les blessures négatives sont également accumulées !
     // Combiner les blessures identiques : 2 Stade X = Stade X+1
@@ -174,12 +196,10 @@ std::string Entity::getNormalizedClass() const {
 
 int Entity::getActiveMaxWoundEffectiveness() const {
     int maxW = -999;
-    std::string klass = getNormalizedClass();
-    bool delay = (klass == "AEGIS");
     
     for (const auto& w : wounds) {
-        if (delay) {
-            if (currentTurn - w.turnApplied < 2) {
+        if (woundDebuffDelayTurns > 0) {
+            if (currentTurn - w.turnApplied < woundDebuffDelayTurns) {
                 continue;
             }
         }
@@ -191,26 +211,19 @@ int Entity::getActiveMaxWoundEffectiveness() const {
 }
 
 bool Entity::isImmuneToPoison() const {
-    std::string klass = getNormalizedClass();
-    return (klass == "GRIMM" || klass == "ARACHNEE");
+    return immuneToPoison;
 }
 
 bool Entity::isImmuneToCharm() const {
-    std::string klass = getNormalizedClass();
-    return (klass == "GRIMM" || klass == "ARACHNEE");
+    return immuneToCharm;
 }
 
 bool Entity::isImmuneToStun() const {
-    std::string klass = getNormalizedClass();
-    return (klass == "AEGIS");
+    return immuneToStun;
 }
 
 float Entity::getFireDamageResistanceBonus() const {
-    std::string klass = getNormalizedClass();
-    if (klass == "FORGEMAITRE") {
-        return 0.10f;
-    }
-    return 0.0f;
+    return fireDamageResistanceBonus;
 }
 
 float Entity::getResistanceTo(DamageType type) const {
@@ -223,4 +236,13 @@ float Entity::getResistanceTo(DamageType type) const {
         resist += getFireDamageResistanceBonus();
     }
     return resist;
+}
+
+float Entity::getWearMultiplierOn(ArmorMaterial material) const {
+    switch (material) {
+        case ArmorMaterial::Fibre:   return wearMultiplierOnFibre;
+        case ArmorMaterial::Peau:    return wearMultiplierOnPeau;
+        case ArmorMaterial::Mineral: return wearMultiplierOnMineral;
+    }
+    return 1.0f;
 }

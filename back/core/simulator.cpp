@@ -86,12 +86,11 @@ std::vector<float> Simulator::computeOverclockMultipliers(const Entity& entity, 
     std::vector<float> multipliers(actions.size(), 1.0f);
     float overclockMultipliers[] = {2.0f, 2.3f, 2.6f, 3.4f, 5.0f, 7.0f};
 
-    std::string klass = entity.getNormalizedClass();
-    bool hasFreeParry = (klass == "AEGIS");
-    bool hasFreeAttack = (klass == "FANTOME");
+    int freeParries = entity.freeParriesPerTurn;
+    int freeAttacks = entity.freeAttacksPerTurn;
 
-    bool freeParryUsed = false;
-    bool freeAttackUsed = false;
+    int freeParriesUsed = 0;
+    int freeAttacksUsed = 0;
     
     int standardActionsCount = 0;
 
@@ -99,12 +98,12 @@ std::vector<float> Simulator::computeOverclockMultipliers(const Entity& entity, 
         ActionType type = actions[i];
         
         bool isFreeDueToClass = false;
-        if (type == ActionType::Parry && hasFreeParry && !freeParryUsed) {
+        if (type == ActionType::Parry && freeParriesUsed < freeParries) {
             isFreeDueToClass = true;
-            freeParryUsed = true;
-        } else if (type == ActionType::Attack && hasFreeAttack && !freeAttackUsed) {
+            freeParriesUsed++;
+        } else if (type == ActionType::Attack && freeAttacksUsed < freeAttacks) {
             isFreeDueToClass = true;
-            freeAttackUsed = true;
+            freeAttacksUsed++;
         }
 
         if (isFreeDueToClass) {
