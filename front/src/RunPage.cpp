@@ -339,6 +339,13 @@ void RunPage::loadEntities() {
 }
 
 void RunPage::startCombat() {
+    if (p1Socket) {
+        p1Socket->disconnectFromHost();
+    }
+    if (p2Socket) {
+        p2Socket->disconnectFromHost();
+    }
+
     QString n1 = char1Combo->currentText();
     QString n2 = char2Combo->currentText();
     
@@ -670,17 +677,32 @@ QString RunPage::queryTCP(const QJsonObject& state, int playerNum) {
     int port = (playerNum == 1) ? tcpPortEdit1->value() : tcpPortEdit2->value();
     if (host.isEmpty()) host = "127.0.0.1";
     
-    QTcpSocket socket;
-    socket.connectToHost(host, port);
-    if (!socket.waitForConnected(3000)) { // 3 seconds timeout to connect
-        combatLog->append("❌ [TCP] Impossible de se connecter au serveur " + host + ":" + QString::number(port));
-        return "Passer";
+    QTcpSocket*& socket = (playerNum == 1) ? p1Socket : p2Socket;
+    if (!socket) {
+        socket = new QTcpSocket(this);
+    }
+    
+    // If socket is connected to a different host/port, close it first
+    if (socket->state() != QAbstractSocket::UnconnectedState && 
+        (socket->peerAddress().toString() != host && socket->peerName() != host || socket->peerPort() != port)) {
+        socket->disconnectFromHost();
+        if (socket->state() != QAbstractSocket::UnconnectedState) {
+            socket->waitForDisconnected(1000);
+        }
+    }
+    
+    if (socket->state() == QAbstractSocket::UnconnectedState) {
+        socket->connectToHost(host, port);
+        if (!socket->waitForConnected(3000)) { // 3 seconds timeout to connect
+            combatLog->append("❌ [TCP] Impossible de se connecter au serveur " + host + ":" + QString::number(port));
+            return "Passer";
+        }
     }
     
     QJsonDocument doc(state);
     QByteArray data = doc.toJson(QJsonDocument::Compact) + "\n";
-    socket.write(data);
-    if (!socket.waitForBytesWritten(2000)) {
+    socket->write(data);
+    if (!socket->waitForBytesWritten(2000)) {
         combatLog->append("❌ [TCP] Erreur d'écriture sur la socket.");
         return "Passer";
     }
@@ -692,8 +714,11 @@ QString RunPage::queryTCP(const QJsonObject& state, int playerNum) {
     timer.start();
     
     while (remainingTimeMs > 0) {
-        if (socket.waitForReadyRead(remainingTimeMs)) {
-            responseData += socket.readAll();
+        if (socket->state() != QAbstractSocket::ConnectedState) {
+            break;
+        }
+        if (socket->waitForReadyRead(remainingTimeMs)) {
+            responseData += socket->readAll();
             if (responseData.contains('\n')) {
                 break; // Received complete line
             }

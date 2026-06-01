@@ -14,7 +14,8 @@ enum class DamageType {
     Neutre,
     Contondant,
     Tranchant,
-    Feu
+    Feu,
+    Corrosion
 };
 
 enum class WeaponWeight {
@@ -119,6 +120,7 @@ public:
     std::optional<Weapon> weapon;
     std::optional<Armor> armor;
     std::optional<Catalyst> catalyst;
+    std::string magicType = "Offensive";
 
     DamageType damageType = DamageType::Neutre;
     std::map<DamageType, float> damageResistances;
@@ -155,6 +157,8 @@ public:
     float getEffectiveResistanceMagique() const;
     bool hasPassive(const std::string& passiveName) const;
     float getWearMultiplierOn(ArmorMaterial material) const;
+    void healWounds(int maxEffectiveness);
+    void healExtreme();
 
     int currentTurn = 1;
     std::string getNormalizedClass() const;

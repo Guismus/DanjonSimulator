@@ -11,6 +11,8 @@
 #include <optional>
 #include "../../back/core/simulator.hpp"
 
+class QTcpSocket;
+
 class RunPage : public QWidget {
     Q_OBJECT
 
@@ -58,6 +60,9 @@ private:
     QTextEdit* combatLog;
 
     Simulator simulator;
+
+    QTcpSocket* p1Socket = nullptr;
+    QTcpSocket* p2Socket = nullptr;
 
     void loadEntities();
     void startCombat();

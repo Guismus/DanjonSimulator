@@ -195,6 +195,19 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
             durabilityLoss = armor.durability;
         }
         
+        // Advanced wear rules (Section 5.4.3)
+        if (activeType == DamageType::Tranchant && (armor.material == ArmorMaterial::Fibre || armor.material == ArmorMaterial::Peau)) {
+            durabilityLoss *= 2;
+        } else if (activeType == DamageType::Contondant && armor.material == ArmorMaterial::Mineral) {
+            durabilityLoss *= 2;
+        }
+        
+        if (activeType == DamageType::Feu && (armor.material == ArmorMaterial::Fibre || armor.material == ArmorMaterial::Peau)) {
+            durabilityLoss += 20;
+        } else if (activeType == DamageType::Corrosion && armor.material == ArmorMaterial::Mineral) {
+            durabilityLoss += 20;
+        }
+
         float wearMult = attacker.getWearMultiplierOn(armor.material);
         durabilityLoss = static_cast<int>(durabilityLoss * wearMult);
         
@@ -220,11 +233,11 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
     if (blocked) {
         return -99;
     } else {
-        float resist = defender.getResistanceTo(attacker.getActiveDamageType());
+        float resist = defender.getResistanceTo(activeType);
         if (resist > 0.0f && effectiveness >= 0) {
             effectiveness = static_cast<int>(effectiveness * (1.0f - resist));
         }
-        defender.applyWound(effectiveness, attacker.getActiveDamageType());
+        defender.applyWound(effectiveness, activeType);
         return effectiveness;
     }
 }

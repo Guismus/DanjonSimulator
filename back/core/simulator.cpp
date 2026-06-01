@@ -302,35 +302,84 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
             logMsg += std::format("[Surcadençage x{:.1f}] ", action.overclockMultiplier);
         }
         
-        std::optional<int> preArmor;
-        if (defender->armor.has_value()) preArmor = defender->armor->durability;
-
-        bool wasParrying = (defender->activeParries > 0);
-        int eff = CombatSystem::executeAttack(*attacker, *defender, action.overclockMultiplier, DamageNature::Magique, DamageType::Feu);
-        
-        if (eff == -98) {
-            logMsg += "-> La magie est esquivée !";
-        } else if (eff == -97) {
-            logMsg += "-> La magie est bloquée par la parade (Bouclier en métal) !";
-        } else if (eff == -99) {
-            logMsg += "-> La magie est bloquée par l'armure !";
-        } else {
-            logMsg += "et inflige un " + getStageName(eff) + " magique (Feu)";
-            if (wasParrying) {
-                int pct = (defender->getNormalizedClass() == "AEGIS") ? 25 : 10;
-                logMsg += " (paré, efficacité de l'attaque réduite de " + std::to_string(pct) + "%)";
-            }
+        // Coût en mana : 10
+        if (attacker->magicReserve < 10.0f && !attacker->isMonster) {
+            logMsg += "-> Échec : réserve magique insuffisante (10.0 requis, restant : " + std::format("{:.1f}", attacker->magicReserve) + ")";
+            logs.push_back(logMsg);
+            return;
+        }
+        if (!attacker->isMonster) {
+            attacker->magicReserve -= 10.0f;
         }
 
-        // Log armor durability loss
-        if (defender->armor.has_value() && preArmor.has_value()) {
-            int currentDur = defender->armor->durability;
-            int diff = preArmor.value() - currentDur;
-            if (diff > 0) {
-                logMsg += std::format("\n  [Armure] {} subit -{} de durabilité ({}/{})",
-                                      defender->armor->name, diff, currentDur, defender->armor->maxDurability);
-                if (currentDur == 0 && preArmor.value() > 0) {
-                    logMsg += std::format("\n  [Armure] {} est rompue !", defender->armor->name);
+        std::string spell = attacker->magicType;
+        int power = static_cast<int>(attacker->getEffectiveForceMagique());
+        if (attacker->catalyst.has_value()) {
+            spell = attacker->catalyst->magicType;
+            power = attacker->catalyst->power;
+        }
+
+        if (spell == "Boost" || spell == "Boost Magic") {
+            attacker->force += 5.0f;
+            attacker->vitesse += 5.0f;
+            logMsg += std::format("-> Canalise une magie de Boost (Force et Vitesse +5.0).");
+        } else if (spell == "Soins" || spell == "Soins Magic" || spell.find("Soins") != std::string::npos) {
+            if (spell.find("TresFaible") != std::string::npos || (spell == "Soins" && power < 5)) {
+                attacker->healWounds(-2);
+                logMsg += "-> Canalise une magie de Soins (Très Faible : blessures <= -2 guéries).";
+            } else if (spell.find("Faible") != std::string::npos || (spell == "Soins" && power < 10)) {
+                attacker->healWounds(0);
+                logMsg += "-> Canalise une magie de Soins (Faible : blessures <= 0 guéries).";
+            } else if (spell.find("Fort") != std::string::npos || (spell == "Soins" && power < 20)) {
+                attacker->healWounds(3);
+                logMsg += "-> Canalise une magie de Soins (Fort : blessures <= 3 guéries).";
+            } else if (spell.find("TresFort") != std::string::npos || (spell == "Soins" && power < 25)) {
+                attacker->healWounds(4);
+                logMsg += "-> Canalise une magie de Soins (Très Fort : blessures <= 4 guéries).";
+            } else if (spell.find("Extreme") != std::string::npos || (spell == "Soins" && power >= 25)) {
+                attacker->healExtreme();
+                logMsg += "-> Canalise une magie de Soins (Extrême : toutes les blessures guéries, sang restauré).";
+            } else { // Moyen par défaut
+                attacker->healWounds(2);
+                logMsg += "-> Canalise une magie de Soins (Moyen : blessures <= 2 guéries).";
+            }
+        } else { // Offensive par défaut
+            std::optional<int> preArmor;
+            if (defender->armor.has_value()) preArmor = defender->armor->durability;
+
+            bool wasParrying = (defender->activeParries > 0);
+            
+            float magCostMult = action.overclockMultiplier;
+            if (attacker->catalyst.has_value()) {
+                magCostMult *= (1.0f + static_cast<float>(power) / 100.0f);
+            }
+            
+            int eff = CombatSystem::executeAttack(*attacker, *defender, magCostMult, DamageNature::Magique, DamageType::Feu);
+            
+            if (eff == -98) {
+                logMsg += "-> La magie offensive (Feu) est esquivée !";
+            } else if (eff == -97) {
+                logMsg += "-> La magie offensive (Feu) est bloquée par la parade !";
+            } else if (eff == -99) {
+                logMsg += "-> La magie offensive (Feu) est bloquée par l'armure !";
+            } else {
+                logMsg += "-> Lance un sort de Feu et inflige un " + getStageName(eff) + " magique (Feu)";
+                if (wasParrying) {
+                    int pct = (defender->getNormalizedClass() == "AEGIS") ? 25 : 10;
+                    logMsg += " (paré, efficacité réduite de " + std::to_string(pct) + "%)";
+                }
+            }
+
+            // Log armor durability loss
+            if (defender->armor.has_value() && preArmor.has_value()) {
+                int currentDur = defender->armor->durability;
+                int diff = preArmor.value() - currentDur;
+                if (diff > 0) {
+                    logMsg += std::format("\n  [Armure] {} subit -{} de durabilité ({}/{})",
+                                          defender->armor->name, diff, currentDur, defender->armor->maxDurability);
+                    if (currentDur == 0 && preArmor.value() > 0) {
+                        logMsg += std::format("\n  [Armure] {} est rompue !", defender->armor->name);
+                    }
                 }
             }
         }

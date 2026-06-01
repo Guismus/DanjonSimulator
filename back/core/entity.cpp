@@ -246,3 +246,17 @@ float Entity::getWearMultiplierOn(ArmorMaterial material) const {
     }
     return 1.0f;
 }
+
+void Entity::healWounds(int maxEffectiveness) {
+    wounds.erase(
+        std::remove_if(wounds.begin(), wounds.end(), [maxEffectiveness](const Wound& w) {
+            return w.effectiveness <= maxEffectiveness;
+        }),
+        wounds.end()
+    );
+}
+
+void Entity::healExtreme() {
+    wounds.clear();
+    blood = 32.0f;
+}

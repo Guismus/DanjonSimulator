@@ -211,6 +211,21 @@ bool DataStore::loadEntities(const std::string& directoryPath) {
                 entity.woundDebuffDelayTurns = j.value("woundDebuffDelayTurns", entity.woundDebuffDelayTurns);
                 entity.fireDamageResistanceBonus = j.value("fireDamageResistanceBonus", entity.fireDamageResistanceBonus);
 
+                entity.magicType = j.value("magicType", j.value("magic_type", "Offensive"));
+                entity.magicReserve = j.value("magicReserve", j.value("magic_reserve", 0.0f));
+
+                if (j.contains("catalyst") && j["catalyst"].is_object()) {
+                    auto catJ = j["catalyst"];
+                    Catalyst cat;
+                    cat.magicType = catJ.value("magicType", catJ.value("magic_type", "Offensive"));
+                    cat.reserve = catJ.value("reserve", catJ.value("magicReserve", catJ.value("magic_reserve", 0)));
+                    cat.power = catJ.value("power", catJ.value("force_magique", catJ.value("forceMagique", 0)));
+                    entity.catalyst = cat;
+                    if (!j.contains("magicReserve") && !j.contains("magic_reserve")) {
+                        entity.magicReserve = static_cast<float>(cat.reserve);
+                    }
+                }
+
                 entityTemplates.emplace(name, entity);
             } catch (json::parse_error& e) {
                 std::cerr << "JSON parse error in " << entry.path() << ": " << e.what() << std::endl;
