@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <array>
-#include <vector>
 
 // Table de "Diff Stats" (Niveaux 1 à 32)
 static std::array<std::array<float, 7>, 32> diffStatsTable;

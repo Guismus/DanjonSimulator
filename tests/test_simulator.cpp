@@ -3,7 +3,6 @@
 #include "../back/core/simulator.hpp"
 #include "../back/data/DataStore.hpp"
 #include <cassert>
-#include <cmath>
 #include <print>
 #include <cstdio>
 #include <vector>

@@ -10,7 +10,6 @@
 #include <QElapsedTimer>
 #include <QTimer>
 #include "../../back/data/DataStore.hpp"
-#include "../../back/systems/CombatSystem.hpp"
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
