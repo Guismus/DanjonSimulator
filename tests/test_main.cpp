@@ -37,6 +37,7 @@ void test_magic_catalyst_selection();
 void test_bal_des_lucioles();
 void test_generic_duration_heal_and_boost();
 void test_races();
+void test_strict_json_validation();
 
 
 #include "../back/data/DataStore.hpp"
@@ -95,6 +96,7 @@ int main() {
     RUN_TEST(test_bal_des_lucioles);
     RUN_TEST(test_generic_duration_heal_and_boost);
     RUN_TEST(test_races);
+    RUN_TEST(test_strict_json_validation);
 
 
     std::println("All unit tests completed successfully!");

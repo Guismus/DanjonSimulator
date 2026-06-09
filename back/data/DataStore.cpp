@@ -347,6 +347,10 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                     if (raceOpt) {
                         entity.racePassives = raceOpt->passives;
                         entity.dragonStats = raceOpt->dragonStats;
+                    } else {
+                        std::println(stderr, "Error: Race '{}' specified for entity '{}' does not exist.", entity.race, name);
+                        success = false;
+                        continue;
                     }
                 }
                 if (j.contains("dragon_stats") && j["dragon_stats"].is_object()) {
@@ -360,8 +364,17 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                 }
 
                 entity.magicType = j.value("magicType", j.value("magic_type", ""));
+                if (!entity.magicType.empty()) {
+                    auto spellOpt = getSpell(entity.magicType);
+                    if (!spellOpt) {
+                        std::println(stderr, "Error: Magic spell '{}' specified for entity '{}' does not exist.", entity.magicType, name);
+                        success = false;
+                        continue;
+                    }
+                }
+
                 float defaultMagicReserve = 0.0f;
-                if (entity.magicType != "Offensive" && !entity.magicType.empty()) {
+                if (!entity.magicType.empty()) {
                     std::string rStr = "F";
                     if (entity.rank == 0) rStr = "None";
                     else if (entity.rank == 1) rStr = "F";
@@ -380,9 +393,16 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                 entity.magicReserve = j.value("magicReserve", j.value("magic_reserve", defaultMagicReserve));
 
                 if (j.contains("catalyst")) {
-                    auto parseCatalystJson = [this](const json& catJ) {
+                    auto parseCatalystJson = [this, &name, &success](const json& catJ) {
                         Catalyst cat;
                         cat.magicType = catJ.value("magicType", catJ.value("magic_type", ""));
+                        if (!cat.magicType.empty()) {
+                            auto spellOpt = getSpell(cat.magicType);
+                            if (!spellOpt) {
+                                std::println(stderr, "Error: Catalyst magic spell '{}' specified for entity '{}' does not exist.", cat.magicType, name);
+                                success = false;
+                            }
+                        }
                         
                         int defaultReserve = 0;
                         int defaultPower = 0;
@@ -392,6 +412,9 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                             if (tempOpt) {
                                 defaultReserve = tempOpt->reserve;
                                 defaultPower = tempOpt->power;
+                            } else {
+                                std::println(stderr, "Error: Catalyst rank '{}' specified for entity '{}' does not exist.", catRank, name);
+                                success = false;
                             }
                         }
                         
@@ -406,6 +429,9 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                         }
                     } else if (j["catalyst"].is_object()) {
                         entity.catalysts.push_back(parseCatalystJson(j["catalyst"]));
+                    }
+                    if (!success) {
+                        continue;
                     }
                     if (!entity.catalysts.empty()) {
                         entity.catalyst = entity.catalysts[0];

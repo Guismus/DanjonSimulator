@@ -714,4 +714,44 @@ void test_races() {
     assert(haineOpt->dragonStats.at("forceMagique") == 26.25f);
 }
 
+#include <fstream>
+#include <filesystem>
+
+void test_strict_json_validation() {
+    // 1. Invalid spell test
+    std::string tempPath = "data/entities/invalid_magic_test_temp.json";
+    {
+        std::ofstream file(tempPath);
+        file << R"({
+            "name": "Invalid Magic Fighter",
+            "stade": 1,
+            "force": 10.0,
+            "magicType": "NonExistentMagicSpellNameXYZ"
+        })";
+    }
+    bool loadResult1 = DataStore::getInstance().loadEntities("data/entities");
+    std::filesystem::remove(tempPath);
+    assert(!loadResult1);
+
+    // 2. Invalid race test
+    std::string tempPath2 = "data/entities/invalid_race_test_temp.json";
+    {
+        std::ofstream file(tempPath2);
+        file << R"({
+            "name": "Invalid Race Fighter",
+            "stade": 1,
+            "force": 10.0,
+            "race": "NonExistentRaceXYZ"
+        })";
+    }
+    bool loadResult2 = DataStore::getInstance().loadEntities("data/entities");
+    std::filesystem::remove(tempPath2);
+    assert(!loadResult2);
+
+    // Reload the normal entities
+    bool reloadResult = DataStore::getInstance().loadEntities("data/entities");
+    assert(reloadResult);
+}
+
+
 
