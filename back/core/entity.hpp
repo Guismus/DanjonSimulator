@@ -142,7 +142,7 @@ public:
     std::optional<Armor> armor;
     std::optional<Catalyst> catalyst;
     std::vector<Catalyst> catalysts;
-    std::string magicType = "Offensive";
+    std::string magicType = "";
 
     DamageType damageType = DamageType::Neutre;
     std::map<DamageType, float> damageResistances;

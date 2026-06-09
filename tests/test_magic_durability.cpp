@@ -206,6 +206,7 @@ void test_advanced_wear_and_magic() {
     target.vitesse = 10.0f;
     mage1.magicReserve = 30.0f;
     mage1.forceMagique = 15.0f;
+    mage1.magicType = "Offensive";
     target.resistanceMagique = 10.0f;
     mage1.blood = 32.0f;
     target.blood = 32.0f;

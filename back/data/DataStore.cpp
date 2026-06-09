@@ -289,7 +289,7 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                 entity.woundDebuffDelayTurns = j.value("woundDebuffDelayTurns", entity.woundDebuffDelayTurns);
                 entity.fireDamageResistanceBonus = j.value("fireDamageResistanceBonus", entity.fireDamageResistanceBonus);
 
-                entity.magicType = j.value("magicType", j.value("magic_type", "Offensive"));
+                entity.magicType = j.value("magicType", j.value("magic_type", ""));
                 float defaultMagicReserve = 0.0f;
                 if (entity.magicType != "Offensive" && !entity.magicType.empty()) {
                     std::string rStr = "F";
@@ -312,7 +312,7 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                 if (j.contains("catalyst")) {
                     auto parseCatalystJson = [this](const json& catJ) {
                         Catalyst cat;
-                        cat.magicType = catJ.value("magicType", catJ.value("magic_type", "Offensive"));
+                        cat.magicType = catJ.value("magicType", catJ.value("magic_type", ""));
                         
                         int defaultReserve = 0;
                         int defaultPower = 0;

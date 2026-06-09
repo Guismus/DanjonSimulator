@@ -384,18 +384,7 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
 
         auto spellOpt = DataStore::getInstance().getSpell(spell);
         if (!spellOpt) {
-            if (spell.find("Soins") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Soins");
-            else if (spell.find("Boost") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Boost");
-            else if (spell.find("Eaux maternelles") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Eaux maternelles");
-            else if (spell.find("Bal des lucioles") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Bal des lucioles");
-            else if (spell.find("Offensive") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Offensive");
-            else {
-                spellOpt = DataStore::getInstance().getSpell("Offensive");
-            }
-        }
-
-        if (!spellOpt) {
-            logMsg += "-> Échec : sort inconnu et aucun sort par défaut disponible.";
+            logMsg += std::format("-> Échec : sort inconnu '{}'.", spell);
             logs.push_back(logMsg);
             return;
         }
