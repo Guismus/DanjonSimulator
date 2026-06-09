@@ -22,6 +22,12 @@ struct Spell {
     nlohmann::json effects = nlohmann::json::array();
 };
 
+struct Race {
+    std::string name;
+    std::vector<std::string> passives;
+    std::map<std::string, float> dragonStats;
+};
+
 class DataStore {
 public:
     static DataStore& getInstance();
@@ -30,6 +36,7 @@ public:
     bool loadEnergySystem(std::string_view filepath);
     bool loadCatalysts(std::string_view filepath);
     bool loadSpells(std::string_view directoryPath);
+    bool loadRaces(std::string_view directoryPath);
     bool loadArmors(std::string_view directoryPath);
     bool loadWeapons(std::string_view directoryPath);
     bool loadEntities(std::string_view directoryPath);
@@ -43,6 +50,7 @@ public:
     const EnergyThresholds* getEnergyThresholds(int rank) const;
     std::optional<CatalystTemplate> getCatalystTemplate(const std::string& rank) const;
     std::optional<Spell> getSpell(std::string_view name) const;
+    std::optional<Race> getRace(std::string_view name) const;
     Entity createFighter(std::string_view name, std::string_view weaponName, std::string_view armorName, float defaultForce = 10.0f) const;
     WeaponDamageMultipliers getWeaponDamageMultipliers() const;
     float getDmgMultMainsNu() const { return dmgMultMainsNu; }
@@ -62,6 +70,7 @@ private:
     std::map<std::string, Weapon, std::less<>> weaponTemplates;
     std::map<std::string, CatalystTemplate, std::less<>> catalystTemplates;
     std::map<std::string, Spell, std::less<>> magicSpells;
+    std::map<std::string, Race, std::less<>> races;
     std::map<int, EnergyThresholds> rankThresholds;
 
 

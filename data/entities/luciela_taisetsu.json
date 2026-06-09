@@ -1,0 +1,25 @@
+{
+    "name": "Luciela Taisetsu",
+    "stade": 10,
+    "race": "Jiaodan",
+    "characterClass": "MEDICHIMISTE",
+    "rank": "E",
+    "force": 13.00,
+    "resistance": 15.50,
+    "vitesse": 22.75,
+    "forceMagique": 13.25,
+    "resistanceMagique": 18.00,
+    "dragon_stats": {
+        "force": 22.00,
+        "resistance": 19.50,
+        "vitesse": 17.75,
+        "forceMagique": 24.50,
+        "resistanceMagique": 18.00
+    },
+    "catalyst": [
+        {
+            "magicType": "Eaux maternelles",
+            "rank": "E"
+        }
+    ]
+}

@@ -36,6 +36,7 @@ void test_eaux_maternelles();
 void test_magic_catalyst_selection();
 void test_bal_des_lucioles();
 void test_generic_duration_heal_and_boost();
+void test_races();
 
 
 #include "../back/data/DataStore.hpp"
@@ -56,6 +57,10 @@ int main() {
     }
     if (!DataStore::getInstance().loadSpells("data/magies")) {
         std::println(stderr, "Failed to load spells");
+        return 1;
+    }
+    if (!DataStore::getInstance().loadRaces("data/races")) {
+        std::println(stderr, "Failed to load races");
         return 1;
     }
 
@@ -89,6 +94,7 @@ int main() {
     RUN_TEST(test_magic_catalyst_selection);
     RUN_TEST(test_bal_des_lucioles);
     RUN_TEST(test_generic_duration_heal_and_boost);
+    RUN_TEST(test_races);
 
 
     std::println("All unit tests completed successfully!");

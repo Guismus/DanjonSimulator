@@ -88,8 +88,8 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
     // Weapon Durability reduction
     if (attacker.weapon.has_value() && attacker.weapon->durability > 0) {
         auto& weapon = attacker.weapon.value();
-        int refWeaponLevel = (attForce < weapon.res) ? attacker.stade : defender.stade;
-        int eff_weapon = calculateStatDifference(attForce, weapon.res, refWeaponLevel);
+        int refWeaponLevel = attacker.stade;
+        int eff_weapon = calculateStatDifference(attacker.getEffectiveForce(), weapon.res, refWeaponLevel);
         
         int durabilityLoss = 0;
         if (eff_weapon <= -5) {

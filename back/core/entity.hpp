@@ -144,6 +144,15 @@ public:
     std::optional<Catalyst> catalyst;
     std::vector<Catalyst> catalysts;
     std::string magicType = "";
+    std::string race = "";
+    std::vector<std::string> racePassives;
+    std::map<std::string, float> dragonStats;
+    bool isTransformed = false;
+    float originalForce = 0.0f;
+    float originalResistance = 0.0f;
+    float originalVitesse = 0.0f;
+    float originalForceMagique = 0.0f;
+    float originalResistanceMagique = 0.0f;
 
     DamageType damageType = DamageType::Neutre;
     std::map<DamageType, float> damageResistances;
@@ -191,6 +200,8 @@ public:
     void consumeActiveDodge();
     bool consumeMagicReserve(float amount);
     void applyStatBoost(float forceBoost, float speedBoost, float rMagBoost = 0.0f);
+    bool hasRacePassive(const std::string& passiveName) const;
+    void transformToDragon();
     void reduceWeaponDurability(int amount);
     void reduceArmorDurability(int amount);
     void resetTemporaryCombatStates();

@@ -230,6 +230,8 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
         std::optional<int> preWeapon;
         if (attacker->weapon.has_value()) preWeapon = attacker->weapon->durability;
 
+        DamageType attackDamageType = attacker->getActiveDamageType();
+
         bool wasParrying = (defender->activeParries > 0);
         int eff = CombatSystem::executeAttack(*attacker, *defender, action.overclockMultiplier, DamageNature::Physique, std::nullopt, DataStore::getInstance().getWeaponDamageMultipliers());
         
@@ -242,7 +244,7 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
         } else if (eff == -96) {
             logMsg += "-> L'attaque glisse sur sa protection d'invulnérabilité !";
         } else {
-            logMsg += "et inflige un " + getStageName(eff) + " physique (" + getDamageTypeName(attacker->getActiveDamageType()) + ")";
+            logMsg += "et inflige un " + getStageName(eff) + " physique (" + getDamageTypeName(attackDamageType) + ")";
             if (wasParrying) {
                 int pct = (defender->getNormalizedClass() == "AEGIS") ? 25 : 10;
                 logMsg += " (paré, efficacité de l'attaque réduite de " + std::to_string(pct) + "%)";
@@ -559,6 +561,10 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
                     } else {
                         logMsg += std::format("-> Canalise le buff d'attaque [{}] pendant {} tours.", spellOpt->name, duration);
                     }
+                } else if (type == "dragon_transform") {
+                    attacker->transformToDragon();
+                    logMsg += std::format("-> {} utilise {} et se transforme en dragon ! Ses statistiques augmentent !",
+                                          attacker->getName(), spellOpt->name);
                 } else if (type == "damage") {
                     std::string natureStr = effect.value("nature", "Magique");
                     std::string dmgTypeStr = effect.value("damage_type", "Feu");

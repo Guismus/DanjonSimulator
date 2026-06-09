@@ -1,0 +1,11 @@
+{
+  "name": "Jiaodan",
+  "passives": ["dragon_transform"],
+  "dragon_stats": {
+    "force": 40.0,
+    "resistance": 35.0,
+    "vitesse": 20.0,
+    "forceMagique": 30.0,
+    "resistanceMagique": 30.0
+  }
+}

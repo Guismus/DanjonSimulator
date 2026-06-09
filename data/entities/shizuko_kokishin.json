@@ -1,0 +1,19 @@
+{
+    "name": "Shizuko Kōkishin",
+    "stade": 4,
+    "race": "Jiaodan",
+    "characterClass": "MEDICHIMISTE",
+    "rank": "F",
+    "force": 8.75,
+    "resistance": 10.50,
+    "vitesse": 14.25,
+    "forceMagique": 9.50,
+    "resistanceMagique": 11.50,
+    "dragon_stats": {
+        "force": 13.00,
+        "resistance": 12.50,
+        "vitesse": 11.75,
+        "forceMagique": 15.25,
+        "resistanceMagique": 11.50
+    }
+}

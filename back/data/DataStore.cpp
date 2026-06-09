@@ -142,6 +142,58 @@ std::optional<Spell> DataStore::getSpell(std::string_view name) const {
     return std::nullopt;
 }
 
+bool DataStore::loadRaces(std::string_view directoryPath) {
+    fs::path dir{directoryPath};
+    if (!fs::exists(dir)) {
+        std::println(stderr, "Races directory does not exist: {}", directoryPath);
+        return false;
+    }
+    bool success = true;
+    for (const auto& entry : fs::directory_iterator(dir)) {
+        if (entry.path().extension() == ".json") {
+            std::ifstream file(entry.path());
+            if (!file.is_open()) {
+                std::println(stderr, "Failed to open race file: {}", entry.path().string());
+                success = false;
+                continue;
+            }
+            try {
+                json j;
+                file >> j;
+                
+                Race race;
+                race.name = j.value("name", "Unknown");
+                if (j.contains("passives") && j["passives"].is_array()) {
+                    for (const auto& passive : j["passives"]) {
+                        if (passive.is_string()) {
+                            race.passives.push_back(passive.get<std::string>());
+                        }
+                    }
+                }
+                if (j.contains("dragon_stats") && j["dragon_stats"].is_object()) {
+                    for (auto it = j["dragon_stats"].begin(); it != j["dragon_stats"].end(); ++it) {
+                        race.dragonStats[it.key()] = it.value().get<float>();
+                    }
+                }
+                
+                races[race.name] = race;
+            } catch (json::parse_error& e) {
+                std::println(stderr, "JSON parse error in race {}: {}", entry.path().string(), e.what());
+                success = false;
+            }
+        }
+    }
+    return success;
+}
+
+std::optional<Race> DataStore::getRace(std::string_view name) const {
+    auto it = races.find(name);
+    if (it != races.end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
 const EnergyThresholds* DataStore::getEnergyThresholds(int rank) const {
     auto it = rankThresholds.find(rank);
     if (it != rankThresholds.end()) return &it->second;
@@ -288,6 +340,24 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                 entity.immuneToStun = j.value("immuneToStun", entity.immuneToStun);
                 entity.woundDebuffDelayTurns = j.value("woundDebuffDelayTurns", entity.woundDebuffDelayTurns);
                 entity.fireDamageResistanceBonus = j.value("fireDamageResistanceBonus", entity.fireDamageResistanceBonus);
+
+                entity.race = j.value("race", "");
+                if (!entity.race.empty()) {
+                    auto raceOpt = getRace(entity.race);
+                    if (raceOpt) {
+                        entity.racePassives = raceOpt->passives;
+                        entity.dragonStats = raceOpt->dragonStats;
+                    }
+                }
+                if (j.contains("dragon_stats") && j["dragon_stats"].is_object()) {
+                    for (auto it = j["dragon_stats"].begin(); it != j["dragon_stats"].end(); ++it) {
+                        entity.dragonStats[it.key()] = it.value().get<float>();
+                    }
+                } else if (j.contains("dragonStats") && j["dragonStats"].is_object()) {
+                    for (auto it = j["dragonStats"].begin(); it != j["dragonStats"].end(); ++it) {
+                        entity.dragonStats[it.key()] = it.value().get<float>();
+                    }
+                }
 
                 entity.magicType = j.value("magicType", j.value("magic_type", ""));
                 float defaultMagicReserve = 0.0f;

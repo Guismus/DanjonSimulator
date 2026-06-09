@@ -609,4 +609,109 @@ void test_generic_duration_heal_and_boost() {
     assert(tester.activeEffects.empty());
 }
 
+void test_races() {
+    // 1. Marwoeth bleeding immunity
+    Entity marwoeth("Marwoeth Tester");
+    marwoeth.race = "Marwoeth";
+    marwoeth.racePassives = {"no_bleeding"};
+    marwoeth.blood = 32.0f;
+    
+    // Apply a severe bleeding trigger of 3 points
+    marwoeth.applyBleeding(3);
+    assert(marwoeth.blood == 32.0f); // Should not decrease since Marwoeth is immune to bleeding
+
+    // Apply a tranchant wound which usually causes bleeding
+    marwoeth.applyWound(3, DamageType::Tranchant);
+    assert(marwoeth.getBleedingRate() == 0); // Bleeding rate should remain 0
+    
+    // 2. Jiaodan dragon transformation
+    Entity jiaodan("Jiaodan Tester");
+    jiaodan.race = "Jiaodan";
+    jiaodan.racePassives = {"dragon_transform"};
+    jiaodan.dragonStats = {
+        {"force", 40.0f},
+        {"resistance", 35.0f},
+        {"vitesse", 20.0f},
+        {"forceMagique", 30.0f},
+        {"resistanceMagique", 30.0f}
+    };
+    jiaodan.force = 10.0f;
+    jiaodan.resistance = 10.0f;
+    jiaodan.vitesse = 10.0f;
+    jiaodan.forceMagique = 10.0f;
+    jiaodan.resistanceMagique = 10.0f;
+    jiaodan.magicReserve = 100.0f;
+    jiaodan.maxPhysicalReserve = 100.0f;
+    jiaodan.physicalReserve = 100.0f;
+    
+    Simulator sim;
+    Entity target("Target");
+    target.stade = 1;
+    target.vitesse = 5.0f;
+    target.maxPhysicalReserve = 100.0f;
+    target.physicalReserve = 100.0f;
+    
+    sim.startCombat(jiaodan, target, ControlMode::Manual, ControlMode::Manual);
+    // Queue dragon transform spell
+    sim.addActionP1(ActionType::Magic, "Transformation en dragon", false);
+    sim.setP1Finished(true);
+    sim.setP2Finished(true);
+    sim.resolveTurn();
+    
+    // Check that stats are replaced by dragon stats
+    assert(sim.getFighter1()->isTransformed);
+    assert(sim.getFighter1()->force == 40.0f);
+    assert(sim.getFighter1()->resistance == 35.0f);
+    assert(sim.getFighter1()->vitesse == 20.0f);
+    assert(sim.getFighter1()->forceMagique == 30.0f);
+    assert(sim.getFighter1()->resistanceMagique == 30.0f);
+
+    // 3. Test overriding dragon stats in DataStore from JSON
+    std::string testJson = R"({
+        "name": "Custom Jiaodan",
+        "race": "Jiaodan",
+        "dragon_stats": {
+            "force": 50.0,
+            "vitesse": 25.0
+        }
+    })";
+    
+    nlohmann::json j = nlohmann::json::parse(testJson);
+    Entity testEntity("Custom Jiaodan");
+    testEntity.race = j.value("race", "");
+    auto raceOpt = DataStore::getInstance().getRace(testEntity.race);
+    assert(raceOpt.has_value());
+    testEntity.racePassives = raceOpt->passives;
+    testEntity.dragonStats = raceOpt->dragonStats;
+    
+    if (j.contains("dragon_stats") && j["dragon_stats"].is_object()) {
+        for (auto it = j["dragon_stats"].begin(); it != j["dragon_stats"].end(); ++it) {
+            testEntity.dragonStats[it.key()] = it.value().get<float>();
+        }
+    }
+    
+    assert(testEntity.racePassives.size() == 1);
+    assert(testEntity.racePassives[0] == "dragon_transform");
+    assert(testEntity.dragonStats["force"] == 50.0f); // Overridden!
+    assert(testEntity.dragonStats["vitesse"] == 25.0f); // Overridden!
+    assert(testEntity.dragonStats["resistance"] == 35.0f); // Fallback from race default!
+
+    // Verify loaded files from data/entities/
+    auto lucielaOpt = DataStore::getInstance().getEntityTemplate("Luciela Taisetsu");
+    assert(lucielaOpt.has_value());
+    assert(lucielaOpt->race == "Jiaodan");
+    assert(lucielaOpt->force == 13.00f);
+    assert(lucielaOpt->vitesse == 22.75f);
+    assert(lucielaOpt->dragonStats.at("force") == 22.00f);
+    assert(lucielaOpt->dragonStats.at("resistance") == 19.50f);
+    assert(lucielaOpt->dragonStats.at("vitesse") == 17.75f);
+
+    auto haineOpt = DataStore::getInstance().getEntityTemplate("Haïné Sukehira");
+    assert(haineOpt.has_value());
+    assert(haineOpt->race == "Jiaodan");
+    assert(haineOpt->force == 12.25f);
+    assert(haineOpt->dragonStats.at("force") == 21.00f);
+    assert(haineOpt->dragonStats.at("forceMagique") == 26.25f);
+}
+
 

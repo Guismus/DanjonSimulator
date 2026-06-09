@@ -1,0 +1,19 @@
+{
+    "name": "Haïné Sukehira",
+    "stade": 10,
+    "race": "Jiaodan",
+    "characterClass": "GRIMM",
+    "rank": "E",
+    "force": 12.25,
+    "resistance": 17.50,
+    "vitesse": 22.50,
+    "forceMagique": 15.00,
+    "resistanceMagique": 18.50,
+    "dragon_stats": {
+        "force": 21.00,
+        "resistance": 21.50,
+        "vitesse": 17.75,
+        "forceMagique": 26.25,
+        "resistanceMagique": 18.50
+    }
+}

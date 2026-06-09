@@ -1,0 +1,9 @@
+{
+  "name": "Transformation en dragon",
+  "cost": 0.0,
+  "effects": [
+    {
+      "type": "dragon_transform"
+    }
+  ]
+}

@@ -62,6 +62,7 @@ void Entity::applyWound(int eff, DamageType type) {
 }
 
 void Entity::applyBleeding(int severity) {
+    if (hasRacePassive("no_bleeding")) return;
     blood -= severity;
     if (blood < 0) blood = 0;
 }
@@ -99,6 +100,9 @@ DamageType Entity::getActiveDamageType() const {
 }
 
 int Entity::getBleedingRate() const {
+    if (hasRacePassive("no_bleeding")) {
+        return 0;
+    }
     int maxRate = 0;
     for (const auto& wound : wounds) {
         if (wound.damageType == DamageType::Tranchant) {
@@ -404,6 +408,30 @@ void Entity::decrementActiveEffects(std::vector<std::string>& logs) {
         }
     }
     activeEffects = remaining;
+}
+
+bool Entity::hasRacePassive(const std::string& passiveName) const {
+    for (const auto& passive : racePassives) {
+        if (passive == passiveName) return true;
+    }
+    return false;
+}
+
+void Entity::transformToDragon() {
+    if (isTransformed) return;
+    originalForce = force;
+    originalResistance = resistance;
+    originalVitesse = vitesse;
+    originalForceMagique = forceMagique;
+    originalResistanceMagique = resistanceMagique;
+    
+    if (dragonStats.count("force")) force = dragonStats.at("force");
+    if (dragonStats.count("resistance")) resistance = dragonStats.at("resistance");
+    if (dragonStats.count("vitesse")) vitesse = dragonStats.at("vitesse");
+    if (dragonStats.count("forceMagique")) forceMagique = dragonStats.at("forceMagique");
+    if (dragonStats.count("resistanceMagique")) resistanceMagique = dragonStats.at("resistanceMagique");
+    
+    isTransformed = true;
 }
 
 

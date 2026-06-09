@@ -233,46 +233,69 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
         if (!f1Opt.has_value()) return;
         Entity& f1 = f1Opt.value();
         
-        bool hasBase = (!f1.magicType.empty() && f1.magicReserve >= 10.0f);
-        if (f1.magicType == "Eaux maternelles" && f1.magicReserve < 25.0f) {
-            hasBase = false;
+        bool hasBase = false;
+        if (!f1.magicType.empty()) {
+            auto spellOpt = DataStore::getInstance().getSpell(f1.magicType);
+            float baseCost = spellOpt ? spellOpt->cost : 10.0f;
+            if (f1.magicReserve >= baseCost) {
+                hasBase = true;
+            }
         }
         
-        bool hasCat = (f1.catalyst.has_value() && f1.catalyst->reserve >= 10);
-        if (f1.catalyst.has_value() && f1.catalyst->magicType == "Eaux maternelles" && f1.catalyst->reserve < 25) {
-            hasCat = false;
+        bool hasCat = false;
+        if (f1.catalyst.has_value()) {
+            auto spellOpt = DataStore::getInstance().getSpell(f1.catalyst->magicType);
+            float catCost = spellOpt ? spellOpt->cost : 10.0f;
+            if (f1.catalyst->reserve >= catCost) {
+                hasCat = true;
+            }
         }
+
+        bool canTransform = (f1.hasRacePassive("dragon_transform") && !f1.isTransformed);
+
+        std::vector<std::string> options;
+        if (hasBase) options.push_back("base");
+        if (hasCat) options.push_back("catalyst");
+        if (canTransform) options.push_back("transform");
+
+        if (options.empty()) return;
         
-        if (hasBase && hasCat) {
-            QMenu menu(this);
-            
-            float baseCost = (f1.magicType == "Eaux maternelles") ? 25.0f : 10.0f;
+        QMenu menu(this);
+        QAction* baseAct = nullptr;
+        QAction* catAct = nullptr;
+        QAction* transAct = nullptr;
+        
+        if (hasBase) {
+            auto spellOpt = DataStore::getInstance().getSpell(f1.magicType);
+            float baseCost = spellOpt ? spellOpt->cost : 10.0f;
             QString baseLabel = QString("Base : %1 (%2 Mana, Coût : %3)")
                                 .arg(QString::fromStdString(f1.magicType))
                                 .arg(QString::number(f1.magicReserve, 'f', 1))
                                 .arg(baseCost);
-            QAction* baseAct = menu.addAction(baseLabel);
-            
-            float catCost = (f1.catalyst->magicType == "Eaux maternelles") ? 25.0f : 10.0f;
+            baseAct = menu.addAction(baseLabel);
+        }
+        if (hasCat) {
+            auto spellOpt = DataStore::getInstance().getSpell(f1.catalyst->magicType);
+            float catCost = spellOpt ? spellOpt->cost : 10.0f;
             QString catLabel = QString("Catalyseur : %1 (Réserve : %2, Coût : %3)")
                                .arg(QString::fromStdString(f1.catalyst->magicType))
                                .arg(f1.catalyst->reserve)
                                .arg(catCost);
-            QAction* catAct = menu.addAction(catLabel);
-            
-            QAction* selected = menu.exec(QCursor::pos());
-            if (selected == baseAct) {
-                simulator.addActionP1(ActionType::Magic, f1.magicType, false);
-                updateCombatUI();
-            } else if (selected == catAct) {
-                simulator.addActionP1(ActionType::Magic, f1.catalyst->magicType, true);
-                updateCombatUI();
-            }
-        } else if (hasCat) {
+            catAct = menu.addAction(catLabel);
+        }
+        if (canTransform) {
+            transAct = menu.addAction("Transformation en dragon (Coût : 0 Mana)");
+        }
+        
+        QAction* selected = menu.exec(QCursor::pos());
+        if (selected == baseAct && baseAct) {
+            simulator.addActionP1(ActionType::Magic, f1.magicType, false);
+            updateCombatUI();
+        } else if (selected == catAct && catAct) {
             simulator.addActionP1(ActionType::Magic, f1.catalyst->magicType, true);
             updateCombatUI();
-        } else if (hasBase) {
-            simulator.addActionP1(ActionType::Magic, f1.magicType, false);
+        } else if (selected == transAct && transAct) {
+            simulator.addActionP1(ActionType::Magic, "Transformation en dragon", false);
             updateCombatUI();
         }
     });
@@ -295,46 +318,69 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
         if (!f2Opt.has_value()) return;
         Entity& f2 = f2Opt.value();
         
-        bool hasBase = (!f2.magicType.empty() && f2.magicReserve >= 10.0f);
-        if (f2.magicType == "Eaux maternelles" && f2.magicReserve < 25.0f) {
-            hasBase = false;
+        bool hasBase = false;
+        if (!f2.magicType.empty()) {
+            auto spellOpt = DataStore::getInstance().getSpell(f2.magicType);
+            float baseCost = spellOpt ? spellOpt->cost : 10.0f;
+            if (f2.magicReserve >= baseCost) {
+                hasBase = true;
+            }
         }
         
-        bool hasCat = (f2.catalyst.has_value() && f2.catalyst->reserve >= 10);
-        if (f2.catalyst.has_value() && f2.catalyst->magicType == "Eaux maternelles" && f2.catalyst->reserve < 25) {
-            hasCat = false;
+        bool hasCat = false;
+        if (f2.catalyst.has_value()) {
+            auto spellOpt = DataStore::getInstance().getSpell(f2.catalyst->magicType);
+            float catCost = spellOpt ? spellOpt->cost : 10.0f;
+            if (f2.catalyst->reserve >= catCost) {
+                hasCat = true;
+            }
         }
+
+        bool canTransform = (f2.hasRacePassive("dragon_transform") && !f2.isTransformed);
+
+        std::vector<std::string> options;
+        if (hasBase) options.push_back("base");
+        if (hasCat) options.push_back("catalyst");
+        if (canTransform) options.push_back("transform");
+
+        if (options.empty()) return;
         
-        if (hasBase && hasCat) {
-            QMenu menu(this);
-            
-            float baseCost = (f2.magicType == "Eaux maternelles") ? 25.0f : 10.0f;
+        QMenu menu(this);
+        QAction* baseAct = nullptr;
+        QAction* catAct = nullptr;
+        QAction* transAct = nullptr;
+        
+        if (hasBase) {
+            auto spellOpt = DataStore::getInstance().getSpell(f2.magicType);
+            float baseCost = spellOpt ? spellOpt->cost : 10.0f;
             QString baseLabel = QString("Base : %1 (%2 Mana, Coût : %3)")
                                 .arg(QString::fromStdString(f2.magicType))
                                 .arg(QString::number(f2.magicReserve, 'f', 1))
                                 .arg(baseCost);
-            QAction* baseAct = menu.addAction(baseLabel);
-            
-            float catCost = (f2.catalyst->magicType == "Eaux maternelles") ? 25.0f : 10.0f;
+            baseAct = menu.addAction(baseLabel);
+        }
+        if (hasCat) {
+            auto spellOpt = DataStore::getInstance().getSpell(f2.catalyst->magicType);
+            float catCost = spellOpt ? spellOpt->cost : 10.0f;
             QString catLabel = QString("Catalyseur : %1 (Réserve : %2, Coût : %3)")
                                .arg(QString::fromStdString(f2.catalyst->magicType))
                                .arg(f2.catalyst->reserve)
                                .arg(catCost);
-            QAction* catAct = menu.addAction(catLabel);
-            
-            QAction* selected = menu.exec(QCursor::pos());
-            if (selected == baseAct) {
-                simulator.addActionP2(ActionType::Magic, f2.magicType, false);
-                updateCombatUI();
-            } else if (selected == catAct) {
-                simulator.addActionP2(ActionType::Magic, f2.catalyst->magicType, true);
-                updateCombatUI();
-            }
-        } else if (hasCat) {
+            catAct = menu.addAction(catLabel);
+        }
+        if (canTransform) {
+            transAct = menu.addAction("Transformation en dragon (Coût : 0 Mana)");
+        }
+        
+        QAction* selected = menu.exec(QCursor::pos());
+        if (selected == baseAct && baseAct) {
+            simulator.addActionP2(ActionType::Magic, f2.magicType, false);
+            updateCombatUI();
+        } else if (selected == catAct && catAct) {
             simulator.addActionP2(ActionType::Magic, f2.catalyst->magicType, true);
             updateCombatUI();
-        } else if (hasBase) {
-            simulator.addActionP2(ActionType::Magic, f2.magicType, false);
+        } else if (selected == transAct && transAct) {
+            simulator.addActionP2(ActionType::Magic, "Transformation en dragon", false);
             updateCombatUI();
         }
     });
@@ -621,17 +667,22 @@ void RunPage::updateCombatUI() {
             p1ParryBtn->setEnabled(p1CanAct);
             p1DodgeBtn->setEnabled(p1CanAct);
             
-            bool p1HasMagic = (!f1.magicType.empty() || f1.catalyst.has_value());
+            bool p1HasMagic = (!f1.magicType.empty() || f1.catalyst.has_value() || (f1.hasRacePassive("dragon_transform") && !f1.isTransformed));
             p1MagicBtn->setVisible(p1HasMagic);
             
             bool p1CanCast = false;
             if (!f1.magicType.empty()) {
-                if (f1.magicReserve >= 10.0f) p1CanCast = true;
-                if (f1.magicType == "Eaux maternelles" && f1.magicReserve >= 25.0f) p1CanCast = true;
+                auto spellOpt = DataStore::getInstance().getSpell(f1.magicType);
+                float baseCost = spellOpt ? spellOpt->cost : 10.0f;
+                if (f1.magicReserve >= baseCost) p1CanCast = true;
             }
             if (f1.catalyst.has_value()) {
-                if (f1.catalyst->reserve >= 10) p1CanCast = true;
-                if (f1.catalyst->magicType == "Eaux maternelles" && f1.catalyst->reserve >= 25) p1CanCast = true;
+                auto spellOpt = DataStore::getInstance().getSpell(f1.catalyst->magicType);
+                float catCost = spellOpt ? spellOpt->cost : 10.0f;
+                if (f1.catalyst->reserve >= catCost) p1CanCast = true;
+            }
+            if (f1.hasRacePassive("dragon_transform") && !f1.isTransformed) {
+                p1CanCast = true;
             }
             p1MagicBtn->setEnabled(p1CanAct && p1CanCast);
 
@@ -644,17 +695,22 @@ void RunPage::updateCombatUI() {
             p2ParryBtn->setEnabled(p2CanAct);
             p2DodgeBtn->setEnabled(p2CanAct);
             
-            bool p2HasMagic = (!f2.magicType.empty() || f2.catalyst.has_value());
+            bool p2HasMagic = (!f2.magicType.empty() || f2.catalyst.has_value() || (f2.hasRacePassive("dragon_transform") && !f2.isTransformed));
             p2MagicBtn->setVisible(p2HasMagic);
             
             bool p2CanCast = false;
             if (!f2.magicType.empty()) {
-                if (f2.magicReserve >= 10.0f) p2CanCast = true;
-                if (f2.magicType == "Eaux maternelles" && f2.magicReserve >= 25.0f) p2CanCast = true;
+                auto spellOpt = DataStore::getInstance().getSpell(f2.magicType);
+                float baseCost = spellOpt ? spellOpt->cost : 10.0f;
+                if (f2.magicReserve >= baseCost) p2CanCast = true;
             }
             if (f2.catalyst.has_value()) {
-                if (f2.catalyst->reserve >= 10) p2CanCast = true;
-                if (f2.catalyst->magicType == "Eaux maternelles" && f2.catalyst->reserve >= 25) p2CanCast = true;
+                auto spellOpt = DataStore::getInstance().getSpell(f2.catalyst->magicType);
+                float catCost = spellOpt ? spellOpt->cost : 10.0f;
+                if (f2.catalyst->reserve >= catCost) p2CanCast = true;
+            }
+            if (f2.hasRacePassive("dragon_transform") && !f2.isTransformed) {
+                p2CanCast = true;
             }
             p2MagicBtn->setEnabled(p2CanAct && p2CanCast);
 

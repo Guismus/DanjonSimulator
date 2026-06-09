@@ -1,0 +1,19 @@
+{
+    "name": "Nat Kito",
+    "stade": 7,
+    "race": "Jiaodan",
+    "characterClass": "GRIMM",
+    "rank": "F",
+    "force": 10.75,
+    "resistance": 23.75,
+    "vitesse": 17.75,
+    "forceMagique": 11.25,
+    "resistanceMagique": 14.75,
+    "dragon_stats": {
+        "force": 17.25,
+        "resistance": 15.75,
+        "vitesse": 14.25,
+        "forceMagique": 19.75,
+        "resistanceMagique": 14.75
+    }
+}

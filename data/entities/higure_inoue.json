@@ -1,0 +1,19 @@
+{
+    "name": "Higure Inoue",
+    "stade": 1,
+    "race": "Jiaodan",
+    "characterClass": "GRIMM",
+    "rank": "None",
+    "force": 7.25,
+    "resistance": 7.50,
+    "vitesse": 9.75,
+    "forceMagique": 7.50,
+    "resistanceMagique": 8.00,
+    "dragon_stats": {
+        "force": 9.25,
+        "resistance": 8.50,
+        "vitesse": 8.50,
+        "forceMagique": 10.25,
+        "resistanceMagique": 8.00
+    }
+}
