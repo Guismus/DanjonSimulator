@@ -29,6 +29,7 @@ public:
     std::optional<Armor> getArmorTemplate(std::string_view name) const;
     const EnergyThresholds* getEnergyThresholds(int rank) const;
     Entity createFighter(std::string_view name, std::string_view weaponName, std::string_view armorName, float defaultForce = 10.0f) const;
+    WeaponDamageMultipliers getWeaponDamageMultipliers() const;
     float getDmgMultMainsNu() const { return dmgMultMainsNu; }
     float getDmgMultLegere() const { return dmgMultLegere; }
     float getDmgMultMoyenne() const { return dmgMultMoyenne; }

@@ -391,3 +391,8 @@ Entity DataStore::createFighter(std::string_view name, std::string_view weaponNa
     return entity;
 }
 
+WeaponDamageMultipliers DataStore::getWeaponDamageMultipliers() const {
+    return { dmgMultMainsNu, dmgMultLegere, dmgMultMoyenne, dmgMultLourde };
+}
+
+

@@ -287,3 +287,55 @@ std::string getDamageTypeName(DamageType type) {
     return "Inconnu";
 }
 
+void Entity::consumePhysicalReserve(float amount) {
+    physicalReserve -= amount;
+    if (physicalReserve < 0.0f) {
+        physicalReserve = 0.0f;
+    }
+}
+
+void Entity::addActiveParry() {
+    activeParries++;
+}
+
+void Entity::addActiveDodge() {
+    activeDodges++;
+}
+
+void Entity::consumeActiveParry() {
+    if (activeParries > 0) activeParries--;
+}
+
+void Entity::consumeActiveDodge() {
+    if (activeDodges > 0) activeDodges--;
+}
+
+bool Entity::consumeMagicReserve(float amount) {
+    if (magicReserve < amount) return false;
+    magicReserve -= amount;
+    return true;
+}
+
+void Entity::applyStatBoost(float forceBoost, float speedBoost) {
+    force += forceBoost;
+    vitesse += speedBoost;
+}
+
+void Entity::reduceWeaponDurability(int amount) {
+    if (weapon.has_value()) {
+        weapon->durability = std::max(0, weapon->durability - amount);
+    }
+}
+
+void Entity::reduceArmorDurability(int amount) {
+    if (armor.has_value()) {
+        armor->durability = std::max(0, armor->durability - amount);
+    }
+}
+
+void Entity::resetTemporaryCombatStates() {
+    activeParries = 0;
+    activeDodges = 0;
+}
+
+

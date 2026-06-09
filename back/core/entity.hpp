@@ -91,6 +91,13 @@ struct Wound {
         : effectiveness(eff), damageType(type), turnApplied(turn) {}
 };
 
+struct WeaponDamageMultipliers {
+    float mainsNu = 0.95f;
+    float legere = 1.0f;
+    float moyenne = 1.05f;
+    float lourde = 1.1f;
+};
+
 class Entity {
 public:
     Entity(const std::string& name);
@@ -159,6 +166,17 @@ public:
     float getWearMultiplierOn(ArmorMaterial material) const;
     void healWounds(int maxEffectiveness);
     void healExtreme();
+
+    void consumePhysicalReserve(float amount);
+    void addActiveParry();
+    void addActiveDodge();
+    void consumeActiveParry();
+    void consumeActiveDodge();
+    bool consumeMagicReserve(float amount);
+    void applyStatBoost(float forceBoost, float speedBoost);
+    void reduceWeaponDurability(int amount);
+    void reduceArmorDurability(int amount);
+    void resetTemporaryCombatStates();
 
     int currentTurn = 1;
     std::string getNormalizedClass() const;

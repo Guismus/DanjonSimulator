@@ -34,23 +34,17 @@ int CombatSystem::calculateStatDifference(float attackerStat, float defenderStat
 
 void CombatSystem::executeParry(Entity& character, float enduranceMultiplier) {
     float cost = 7.5f * enduranceMultiplier;
-    character.physicalReserve -= cost;
-    if (character.physicalReserve < 0) {
-        character.physicalReserve = 0;
-    }
-    character.activeParries++;
+    character.consumePhysicalReserve(cost);
+    character.addActiveParry();
 }
 
 void CombatSystem::executeDodge(Entity& character, float enduranceMultiplier) {
     float cost = 10.0f * enduranceMultiplier;
-    character.physicalReserve -= cost;
-    if (character.physicalReserve < 0) {
-        character.physicalReserve = 0;
-    }
-    character.activeDodges++;
+    character.consumePhysicalReserve(cost);
+    character.addActiveDodge();
 }
 
-int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier, DamageNature nature, std::optional<DamageType> overrideType) {
+int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier, DamageNature nature, std::optional<DamageType> overrideType, WeaponDamageMultipliers multipliers) {
     DamageType activeType = overrideType.value_or(attacker.getActiveDamageType());
     // Cost in endurance per attack (Pugilat by default = 7.5f)
     float cost = 7.5f; 
@@ -61,30 +55,27 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
         cost = 7.5f;
     } else if (attacker.weapon.has_value() && attacker.weapon->durability > 0) {
         if (attacker.weapon->type == WeaponWeight::Leger) {
-            multiplier = DataStore::getInstance().getDmgMultLegere();
+            multiplier = multipliers.legere;
             cost = 7.5f;
         } else if (attacker.weapon->type == WeaponWeight::Moyen) {
-            multiplier = DataStore::getInstance().getDmgMultMoyenne();
+            multiplier = multipliers.moyenne;
             cost = 10.0f;
         } else if (attacker.weapon->type == WeaponWeight::Lourd) {
-            multiplier = DataStore::getInstance().getDmgMultLourde();
+            multiplier = multipliers.lourde;
             cost = 12.5f;
         }
     } else {
-        multiplier = DataStore::getInstance().getDmgMultMainsNu();
+        multiplier = multipliers.mainsNu;
         cost = 7.5f;
     }
 
     cost *= enduranceMultiplier;
 
-    attacker.physicalReserve -= cost;
-    if (attacker.physicalReserve < 0) {
-        attacker.physicalReserve = 0;
-    }
+    attacker.consumePhysicalReserve(cost);
 
     // Check Dodge first
     if (defender.activeDodges > 0) {
-        defender.activeDodges--;
+        defender.consumeActiveDodge();
         return -98; // Special code for Evaded/Esquivé
     }
 
@@ -121,7 +112,7 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
         } else { // eff_weapon >= 5
             durabilityLoss = weapon.durability;
         }
-        weapon.durability = std::max(0, weapon.durability - durabilityLoss);
+        attacker.reduceWeaponDurability(durabilityLoss);
     }
 
     // Determine which character has the lowest stat involved (Force vs Resistance)
@@ -139,7 +130,7 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
     bool parried = false;
     bool parryBlocked = false;
     if (defender.activeParries > 0) {
-        defender.activeParries--;
+        defender.consumeActiveParry();
         parried = true;
         if (defender.hasPassive("Bouclier en métal") && activeType == DamageType::Tranchant) {
             parryBlocked = true;
@@ -209,7 +200,7 @@ int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float endura
         float wearMult = attacker.getWearMultiplierOn(armor.material);
         durabilityLoss = static_cast<int>(durabilityLoss * wearMult);
         
-        armor.durability = std::max(0, armor.durability - durabilityLoss);
+        defender.reduceArmorDurability(durabilityLoss);
         
         if (armor.durability > 0) {
             if (armor.material == ArmorMaterial::Peau) {

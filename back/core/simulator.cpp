@@ -1,5 +1,6 @@
 #include "simulator.hpp"
 #include "../systems/CombatSystem.hpp"
+#include "../data/DataStore.hpp"
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -209,7 +210,7 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
         if (attacker->weapon.has_value()) preWeapon = attacker->weapon->durability;
 
         bool wasParrying = (defender->activeParries > 0);
-        int eff = CombatSystem::executeAttack(*attacker, *defender, action.overclockMultiplier);
+        int eff = CombatSystem::executeAttack(*attacker, *defender, action.overclockMultiplier, DamageNature::Physique, std::nullopt, DataStore::getInstance().getWeaponDamageMultipliers());
         
         if (eff == -98) {
             logMsg += "-> L'attaque est esquivée !";
@@ -276,13 +277,10 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
         }
         
         // Coût en mana : 10
-        if (attacker->magicReserve < 10.0f && !attacker->isMonster) {
+        if (!attacker->isMonster && !attacker->consumeMagicReserve(10.0f)) {
             logMsg += "-> Échec : réserve magique insuffisante (10.0 requis, restant : " + std::format("{:.1f}", attacker->magicReserve) + ")";
             logs.push_back(logMsg);
             return;
-        }
-        if (!attacker->isMonster) {
-            attacker->magicReserve -= 10.0f;
         }
 
         std::string spell = attacker->magicType;
@@ -293,8 +291,7 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
         }
 
         if (spell == "Boost" || spell == "Boost Magic") {
-            attacker->force += 5.0f;
-            attacker->vitesse += 5.0f;
+            attacker->applyStatBoost(5.0f, 5.0f);
             logMsg += std::format("-> Canalise une magie de Boost (Force et Vitesse +5.0).");
         } else if (spell == "Soins" || spell == "Soins Magic" || spell.find("Soins") != std::string::npos) {
             if (spell.find("TresFaible") != std::string::npos || (spell == "Soins" && power < 5)) {
@@ -327,7 +324,7 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
                 magCostMult *= (1.0f + static_cast<float>(power) / 100.0f);
             }
             
-            int eff = CombatSystem::executeAttack(*attacker, *defender, magCostMult, DamageNature::Magique, DamageType::Feu);
+            int eff = CombatSystem::executeAttack(*attacker, *defender, magCostMult, DamageNature::Magique, DamageType::Feu, DataStore::getInstance().getWeaponDamageMultipliers());
             
             if (eff == -98) {
                 logMsg += "-> La magie offensive (Feu) est esquivée !";
@@ -402,10 +399,8 @@ Simulator::TurnResult Simulator::resolveTurn() {
     result.logs.push_back("\n--- Résolution du Tour " + std::to_string(currentTurn) + " ---");
 
     // Reset temporary combat states
-    fighter1->activeParries = 0;
-    fighter1->activeDodges = 0;
-    fighter2->activeParries = 0;
-    fighter2->activeDodges = 0;
+    fighter1->resetTemporaryCombatStates();
+    fighter2->resetTemporaryCombatStates();
 
     Entity* first = &(*fighter1);
     Entity* second = &(*fighter2);

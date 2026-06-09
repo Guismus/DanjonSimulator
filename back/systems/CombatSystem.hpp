@@ -10,7 +10,8 @@ public:
     // Execute attack and return the calculated effectiveness
     static int executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier = 1.0f,
                              DamageNature nature = DamageNature::Physique,
-                             std::optional<DamageType> overrideType = std::nullopt);
+                             std::optional<DamageType> overrideType = std::nullopt,
+                             WeaponDamageMultipliers multipliers = {});
     static void executeParry(Entity& character, float enduranceMultiplier = 1.0f);
     static void executeDodge(Entity& character, float enduranceMultiplier = 1.0f);
 };
