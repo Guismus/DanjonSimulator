@@ -317,9 +317,10 @@ bool Entity::consumeMagicReserve(float amount) {
     return true;
 }
 
-void Entity::applyStatBoost(float forceBoost, float speedBoost) {
+void Entity::applyStatBoost(float forceBoost, float speedBoost, float rMagBoost) {
     force += forceBoost;
     vitesse += speedBoost;
+    resistanceMagique += rMagBoost;
 }
 
 void Entity::reduceWeaponDurability(int amount) {
@@ -395,6 +396,7 @@ void Entity::decrementActiveEffects(std::vector<std::string>& logs) {
             if (ae.type == "boost") {
                 force -= ae.forceBoost;
                 vitesse -= ae.speedBoost;
+                resistanceMagique -= ae.rMagBoost;
                 logs.push_back(std::format("  [Effet Terminé] Le boost de stats de {} sur {} a expiré.", ae.spellName, getName()));
             } else if (ae.type == "bal_des_lucioles" || ae.type == "attack_buff") {
                 logs.push_back(std::format("  [Effet Terminé] L'effet {} sur {} a expiré.", ae.spellName.empty() ? ae.type : ae.spellName, getName()));

@@ -206,7 +206,7 @@ void test_advanced_wear_and_magic() {
     target.vitesse = 10.0f;
     mage1.magicReserve = 30.0f;
     mage1.forceMagique = 15.0f;
-    mage1.magicType = "Offensive";
+    mage1.magicType = "Bal des lucioles";
     target.resistanceMagique = 10.0f;
     mage1.blood = 32.0f;
     target.blood = 32.0f;
@@ -226,8 +226,8 @@ void test_advanced_wear_and_magic() {
     sim.setP2Finished(true);
     auto turnRes = sim.resolveTurn();
     
-    // Mage 1 should have consumed 10 mana
-    assert(sim.getFighter1()->magicReserve == 20.0f);
+    // Mage 1 should have consumed 15 mana
+    assert(sim.getFighter1()->magicReserve == 15.0f);
     // target should have a Feu wound of stage 5
     assert(sim.getFighter2()->wounds.size() == 1);
     assert(sim.getFighter2()->wounds[0].effectiveness == 5);
@@ -239,8 +239,9 @@ void test_advanced_wear_and_magic() {
     mage2.vitesse = 10.0f;
     mage2.force = 10.0f;
     mage2.forceMagique = 10.0f;
-    mage2.magicReserve = 20.0f;
-    mage2.magicType = "Boost";
+    mage2.magicReserve = 50.0f;
+    mage2.magicType = "Pouls du tonnerre";
+    mage2.resistanceMagique = 10.0f;
     mage2.maxPhysicalReserve = 100.0f;
     mage2.physicalReserve = 100.0f;
     
@@ -248,30 +249,40 @@ void test_advanced_wear_and_magic() {
     sim.addActionP1(ActionType::Magic);
     sim.setP1Finished(true);
     sim.setP2Finished(true);
-    sim.resolveTurn();
+    turnRes = sim.resolveTurn();
 
-    // Mage 2 force and speed should be increased by 5
+    // Verify Pouls du tonnerre was cast and logged
+    bool foundLog = false;
+    for (const auto& log : turnRes.logs) {
+        if (log.find("Pouls du tonnerre") != std::string::npos) {
+            foundLog = true;
+        }
+    }
+    assert(foundLog);
+
+    // Mage 2 force remains untouched (10.0f)
+    // Mage 2 speed and r_mag were boosted but reverted back to their base values (10.0f) since duration is 1 turn
     assert(sim.getFighter1()->magicReserve == 10.0f);
-    assert(sim.getFighter1()->force == 15.0f);
-    assert(sim.getFighter1()->vitesse == 15.0f);
+    assert(sim.getFighter1()->force == 10.0f);
+    assert(sim.getFighter1()->vitesse == 10.0f);
+    assert(sim.getFighter1()->resistanceMagique == 10.0f);
 
     // Test C: Magic Soins (healing wounds)
     Entity mage3("Mage 3");
     mage3.stade = 1;
     mage3.vitesse = 10.0f;
-    mage3.forceMagique = 15.0f; // Soins Faible/Moyen threshold after wound penalty
+    mage3.forceMagique = 15.0f;
     mage3.magicReserve = 30.0f;
-    mage3.magicType = "Soins";
+    mage3.magicType = "Bal des lucioles";
     mage3.maxPhysicalReserve = 100.0f;
     mage3.physicalReserve = 100.0f;
     mage3.blood = 20.0f;
 
-    // Apply multiple wounds (avoiding combinations that trigger death: Stade 4 + Stade 0+)
-    mage3.applyWound(-3, DamageType::Contondant); // Healed by <= 3
-    mage3.applyWound(-1, DamageType::Contondant); // Healed by <= 3
+    // Apply multiple wounds
+    mage3.applyWound(-3, DamageType::Contondant); // Healed by <= 2 (Moyen)
+    mage3.applyWound(-1, DamageType::Contondant); // Healed by <= 2 (Moyen)
     mage3.applyWound(4, DamageType::Contondant);  // Needs Extreme or Très Fort
 
-    // With magic force 10, "Soins" default resolves wounds <= 2 (Moyen).
     sim.startCombat(mage3, target, ControlMode::Manual, ControlMode::Manual);
     sim.addActionP1(ActionType::Magic);
     sim.setP1Finished(true);
@@ -279,17 +290,17 @@ void test_advanced_wear_and_magic() {
     sim.resolveTurn();
 
     // Remaining wounds should only be the ones with effectiveness > 2, which is effectiveness 4.
-    // The wounds at -3, 0, and 2 should be healed.
     assert(sim.getFighter1()->wounds.size() == 1);
     assert(sim.getFighter1()->wounds[0].effectiveness == 4);
+    assert(sim.getFighter1()->magicReserve == 15.0f);
 
     // Test D: Extreme Healing restores all wounds and blood
     Entity mage4("Mage 4");
     mage4.stade = 1;
     mage4.vitesse = 10.0f;
-    mage4.forceMagique = 36.0f; // Extreme healing threshold >= 25 after wound penalty
-    mage4.magicReserve = 20.0f;
-    mage4.magicType = "Soins";
+    mage4.forceMagique = 36.0f;
+    mage4.magicReserve = 30.0f;
+    mage4.magicType = "Eaux maternelles";
     mage4.maxPhysicalReserve = 100.0f;
     mage4.physicalReserve = 100.0f;
     mage4.blood = 15.0f;
@@ -304,6 +315,7 @@ void test_advanced_wear_and_magic() {
     // Wounds should be empty, and blood should be restored to 32.0f
     assert(sim.getFighter1()->wounds.empty());
     assert(sim.getFighter1()->blood == 32.0f);
+    assert(sim.getFighter1()->magicReserve == 5.0f);
 }
 
 void test_eaux_maternelles() {
@@ -440,9 +452,9 @@ void test_magic_catalyst_selection() {
     fighter.magicReserve = 30.0f;
     fighter.blood = 15.0f;
 
-    // Fighter has catalyst: Boost (100 reserve)
+    // Fighter has catalyst: Pouls du tonnerre (100 reserve)
     Catalyst cat;
-    cat.magicType = "Boost";
+    cat.magicType = "Pouls du tonnerre";
     cat.reserve = 100;
     cat.power = 10;
     fighter.catalyst = cat;
@@ -450,20 +462,19 @@ void test_magic_catalyst_selection() {
 
     sim.startCombat(fighter, target, ControlMode::Manual, ControlMode::Manual);
 
-    // 1. Cast catalyst spell (Boost)
-    // We queue: magicType = "Boost", useCatalyst = true
-    sim.addActionP1(ActionType::Magic, "Boost", true);
+    // 1. Cast catalyst spell (Pouls du tonnerre)
+    sim.addActionP1(ActionType::Magic, "Pouls du tonnerre", true);
     sim.setP1Finished(true);
     sim.setP2Finished(true);
     auto res1 = sim.resolveTurn();
 
 
-    // Verify catalyst reserve decreased (100 - 10 = 90)
+    // Verify catalyst reserve decreased (100 - 40 = 60)
     assert(sim.getFighter1()->catalyst.has_value());
-    assert(sim.getFighter1()->catalyst->reserve == 90);
+    assert(sim.getFighter1()->catalyst->reserve == 60);
     // Base magicReserve remains untouched (30.0f)
     assert(sim.getFighter1()->magicReserve == 30.0f);
-    // Wounds/blood remains untouched (not healed by Boost)
+    // Wounds/blood remains untouched (not healed by Pouls du tonnerre)
     assert(sim.getFighter1()->blood == 15.0f);
 
     // 2. Cast base spell (Eaux maternelles, cost 25)
@@ -475,8 +486,8 @@ void test_magic_catalyst_selection() {
 
     // Verify base magic reserve decreased (30 - 25 = 5)
     assert(sim.getFighter1()->magicReserve == 5.0f);
-    // Catalyst reserve remains untouched (90)
-    assert(sim.getFighter1()->catalyst->reserve == 90);
+    // Catalyst reserve remains untouched (60)
+    assert(sim.getFighter1()->catalyst->reserve == 60);
     // Blood restored to 32.0f by Eaux maternelles
     assert(sim.getFighter1()->blood == 32.0f);
     // Invulnerability turns left should be 1 (started at 2, decremented at turn end)

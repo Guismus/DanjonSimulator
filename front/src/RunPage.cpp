@@ -233,7 +233,7 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
         if (!f1Opt.has_value()) return;
         Entity& f1 = f1Opt.value();
         
-        bool hasBase = (f1.magicReserve >= 10.0f);
+        bool hasBase = (!f1.magicType.empty() && f1.magicReserve >= 10.0f);
         if (f1.magicType == "Eaux maternelles" && f1.magicReserve < 25.0f) {
             hasBase = false;
         }
@@ -295,7 +295,7 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
         if (!f2Opt.has_value()) return;
         Entity& f2 = f2Opt.value();
         
-        bool hasBase = (f2.magicReserve >= 10.0f);
+        bool hasBase = (!f2.magicType.empty() && f2.magicReserve >= 10.0f);
         if (f2.magicType == "Eaux maternelles" && f2.magicReserve < 25.0f) {
             hasBase = false;
         }
@@ -532,7 +532,7 @@ void RunPage::updateCombatUI() {
         }
 
         QString magicInfo1 = "";
-        if (f1.magicReserve > 0.0f) {
+        if (!f1.magicType.empty() && f1.magicReserve > 0.0f) {
             magicInfo1 = "Mana : " + QString::number(f1.magicReserve, 'f', 1) + " (Sort : " + QString::fromStdString(f1.magicType) + ")\n";
         }
         if (f1.catalyst.has_value()) {
@@ -584,7 +584,7 @@ void RunPage::updateCombatUI() {
         }
 
         QString magicInfo2 = "";
-        if (f2.magicReserve > 0.0f) {
+        if (!f2.magicType.empty() && f2.magicReserve > 0.0f) {
             magicInfo2 = "Mana : " + QString::number(f2.magicReserve, 'f', 1) + " (Sort : " + QString::fromStdString(f2.magicType) + ")\n";
         }
         if (f2.catalyst.has_value()) {
@@ -621,12 +621,14 @@ void RunPage::updateCombatUI() {
             p1ParryBtn->setEnabled(p1CanAct);
             p1DodgeBtn->setEnabled(p1CanAct);
             
-            bool p1HasMagic = (f1.magicReserve > 0.0f || f1.catalyst.has_value());
+            bool p1HasMagic = (!f1.magicType.empty() || f1.catalyst.has_value());
             p1MagicBtn->setVisible(p1HasMagic);
             
             bool p1CanCast = false;
-            if (f1.magicReserve >= 10.0f) p1CanCast = true;
-            if (f1.magicType == "Eaux maternelles" && f1.magicReserve >= 25.0f) p1CanCast = true;
+            if (!f1.magicType.empty()) {
+                if (f1.magicReserve >= 10.0f) p1CanCast = true;
+                if (f1.magicType == "Eaux maternelles" && f1.magicReserve >= 25.0f) p1CanCast = true;
+            }
             if (f1.catalyst.has_value()) {
                 if (f1.catalyst->reserve >= 10) p1CanCast = true;
                 if (f1.catalyst->magicType == "Eaux maternelles" && f1.catalyst->reserve >= 25) p1CanCast = true;
@@ -642,12 +644,14 @@ void RunPage::updateCombatUI() {
             p2ParryBtn->setEnabled(p2CanAct);
             p2DodgeBtn->setEnabled(p2CanAct);
             
-            bool p2HasMagic = (f2.magicReserve > 0.0f || f2.catalyst.has_value());
+            bool p2HasMagic = (!f2.magicType.empty() || f2.catalyst.has_value());
             p2MagicBtn->setVisible(p2HasMagic);
             
             bool p2CanCast = false;
-            if (f2.magicReserve >= 10.0f) p2CanCast = true;
-            if (f2.magicType == "Eaux maternelles" && f2.magicReserve >= 25.0f) p2CanCast = true;
+            if (!f2.magicType.empty()) {
+                if (f2.magicReserve >= 10.0f) p2CanCast = true;
+                if (f2.magicType == "Eaux maternelles" && f2.magicReserve >= 25.0f) p2CanCast = true;
+            }
             if (f2.catalyst.has_value()) {
                 if (f2.catalyst->reserve >= 10) p2CanCast = true;
                 if (f2.catalyst->magicType == "Eaux maternelles" && f2.catalyst->reserve >= 25) p2CanCast = true;

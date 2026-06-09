@@ -1,0 +1,12 @@
+{
+  "name": "Pouls du tonnerre",
+  "cost": 40.0,
+  "effects": [
+    {
+      "type": "boost",
+      "duration": "1 turn",
+      "vitesse_ratio": 0.1,
+      "r_mag_ratio": 0.05
+    }
+  ]
+}

@@ -98,6 +98,7 @@ struct ActiveEffect {
     int duration = 0;             // remaining turns
     float forceBoost = 0.0f;
     float speedBoost = 0.0f;
+    float rMagBoost = 0.0f;
     std::string power = "";       // for heal: "extreme", "moyen", etc.
     int casterMagicPower = 0;     // for scaling heals
     float burnMultiplier = 0.0f;  // for attack burn modifiers
@@ -189,7 +190,7 @@ public:
     void consumeActiveParry();
     void consumeActiveDodge();
     bool consumeMagicReserve(float amount);
-    void applyStatBoost(float forceBoost, float speedBoost);
+    void applyStatBoost(float forceBoost, float speedBoost, float rMagBoost = 0.0f);
     void reduceWeaponDurability(int amount);
     void reduceArmorDurability(int amount);
     void resetTemporaryCombatStates();

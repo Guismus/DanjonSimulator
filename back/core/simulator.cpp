@@ -424,19 +424,45 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
                     }
                     float forceBoost = effect.value("force", 0.0f);
                     float speedBoost = effect.value("vitesse", effect.value("speed", 0.0f));
-                    attacker->applyStatBoost(forceBoost, speedBoost);
+                    
+                    float speedRatio = effect.value("vitesse_ratio", effect.value("speed_ratio", effect.value("vitesse_multiplier", 0.0f)));
+                    if (speedRatio > 0.0f) {
+                        speedBoost += speedRatio * power;
+                    }
+                    
+                    float rMagBoost = effect.value("r_mag", effect.value("rMag", effect.value("resistance_magique", 0.0f)));
+                    float rMagRatio = effect.value("r_mag_ratio", effect.value("rMag_ratio", effect.value("r_mag_multiplier", effect.value("r.mag_ratio", 0.0f))));
+                    if (rMagRatio > 0.0f) {
+                        rMagBoost += rMagRatio * power;
+                    }
+
+                    attacker->applyStatBoost(forceBoost, speedBoost, rMagBoost);
                     if (duration > 0) {
                         ActiveEffect ae;
                         ae.type = "boost";
                         ae.duration = duration;
                         ae.forceBoost = forceBoost;
                         ae.speedBoost = speedBoost;
+                        ae.rMagBoost = rMagBoost;
                         ae.spellName = spellOpt->name;
                         attacker->activeEffects.push_back(ae);
                     }
-                    std::string statsStr = (forceBoost > 0.0f && speedBoost > 0.0f) ? "la force et la vitesse" 
-                                         : (forceBoost > 0.0f ? "la force" : "la vitesse");
-                    float boostLevel = forceBoost > 0.0f ? forceBoost : speedBoost;
+
+                    std::vector<std::string> boostedNames;
+                    if (forceBoost > 0.0f) boostedNames.push_back("la force");
+                    if (speedBoost > 0.0f) boostedNames.push_back("la vitesse");
+                    if (rMagBoost > 0.0f) boostedNames.push_back("la résistance magique");
+                    
+                    std::string statsStr = "les stats";
+                    if (boostedNames.size() == 1) {
+                        statsStr = boostedNames[0];
+                    } else if (boostedNames.size() == 2) {
+                        statsStr = boostedNames[0] + " et " + boostedNames[1];
+                    } else if (boostedNames.size() == 3) {
+                        statsStr = boostedNames[0] + ", " + boostedNames[1] + " et " + boostedNames[2];
+                    }
+
+                    float boostLevel = forceBoost > 0.0f ? forceBoost : (speedBoost > 0.0f ? speedBoost : rMagBoost);
                     logMsg += std::format("-> {} s'est boosté {} grâce à {} de {:.1f}",
                                           attacker->getName(), statsStr, spellOpt->name, boostLevel);
                     if (duration > 0) {
