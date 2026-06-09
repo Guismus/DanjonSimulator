@@ -519,6 +519,12 @@ Simulator::TurnResult Simulator::resolveTurn() {
         result.logs.push_back(endMsg);
     } else {
         currentTurn++;
+        float v1 = fighter1->getEffectiveVitesse();
+        float v2 = fighter2->getEffectiveVitesse();
+        int refLevel = std::min(fighter1->stade, fighter2->stade);
+        int speedDiff = CombatSystem::calculateStatDifference(v1, v2, refLevel);
+        p1FreeActions = 2 + (speedDiff > 0 ? speedDiff : 0);
+        p2FreeActions = 2 + (speedDiff < 0 ? -speedDiff : 0);
         result.logs.push_back("--- Préparation du Tour " + std::to_string(currentTurn) + " ---\n");
     }
 
