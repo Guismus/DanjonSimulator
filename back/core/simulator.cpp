@@ -4,34 +4,6 @@
 #include <cmath>
 #include <format>
 
-static std::string getStageName(int eff) {
-    if (eff == -99) return "Bloqué par l'armure";
-    if (eff == 0) return "Neutre";
-    std::string name;
-    switch (std::abs(eff)) {
-        case 1: name = "Faveur"; break;
-        case 2: name = "Avantage"; break;
-        case 3: name = "Efficace"; break;
-        case 4: name = "Surpuissance"; break;
-        case 5: name = "Domination"; break;
-        case 6: name = "Ecrasement"; break;
-        case 7: name = "Tyrannie"; break;
-        default: name = "Inconnu"; break;
-    }
-    if (eff < 0) return "Sous-" + name;
-    return name;
-}
-
-static std::string getDamageTypeName(DamageType type) {
-    switch (type) {
-        case DamageType::Neutre: return "Neutre (Pugilat)";
-        case DamageType::Contondant: return "Contondant";
-        case DamageType::Tranchant: return "Tranchant";
-        case DamageType::Feu: return "Feu";
-        case DamageType::Corrosion: return "Corrosion";
-    }
-    return "Inconnu";
-}
 
 Simulator::Simulator() {
 }

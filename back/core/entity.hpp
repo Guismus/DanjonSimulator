@@ -174,3 +174,6 @@ public:
 private:
     std::string name;
 };
+
+std::string getStageName(int eff);
+std::string getDamageTypeName(DamageType type);

@@ -356,3 +356,38 @@ std::optional<Armor> DataStore::getArmorTemplate(std::string_view name) const {
     }
     return std::nullopt;
 }
+
+Entity DataStore::createFighter(std::string_view name, std::string_view weaponName, std::string_view armorName, float defaultForce) const {
+    auto opt = getEntityTemplate(name);
+    Entity entity = opt ? opt.value() : Entity(std::string(name));
+    
+    if (!opt) {
+        entity.force = defaultForce;
+        entity.blood = 32.0f;
+        entity.stade = 1;
+        entity.rank = 1;
+        if (auto t = getEnergyThresholds(entity.rank)) {
+            entity.physicalThresholds = *t;
+            entity.maxPhysicalReserve = t->maxReserve;
+            entity.physicalReserve = t->maxReserve;
+        }
+    }
+    
+    if (weaponName != "Aucune" && !weaponName.empty()) {
+        auto wOpt = getWeaponTemplate(weaponName);
+        if (wOpt) entity.weapon = wOpt;
+    } else {
+        entity.weapon = std::nullopt;
+    }
+    
+    if (armorName != "Aucune" && !armorName.empty()) {
+        auto aOpt = getArmorTemplate(armorName);
+        if (aOpt) entity.armor = aOpt;
+    } else {
+        entity.armor = std::nullopt;
+    }
+    
+    entity.wounds.clear();
+    return entity;
+}
+

@@ -2,47 +2,15 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
-#include <QProcess>
-#include <QTcpSocket>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QElapsedTimer>
 #include <QTimer>
 #include "../../back/data/DataStore.hpp"
+#include "../../back/bindings/AgentRunner.hpp"
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
 #include <QDateTime>
 
-static QString getStageName(int eff) {
-    if (eff == -99) return "Bloqué par l'armure";
-    if (eff == 0) return "Neutre";
-    QString name;
-    switch (std::abs(eff)) {
-        case 1: name = "Faveur"; break;
-        case 2: name = "Avantage"; break;
-        case 3: name = "Efficace"; break;
-        case 4: name = "Surpuissance"; break;
-        case 5: name = "Domination"; break;
-        case 6: name = "Ecrasement"; break;
-        case 7: name = "Tyrannie"; break;
-        default: name = "Inconnu"; break;
-    }
-    if (eff < 0) return "Sous-" + name;
-    return name;
-}
 
-static QString getDamageTypeName(DamageType type) {
-    switch (type) {
-        case DamageType::Neutre: return "Neutre (Pugilat)";
-        case DamageType::Contondant: return "Contondant";
-        case DamageType::Tranchant: return "Tranchant";
-        case DamageType::Feu: return "Feu";
-        case DamageType::Corrosion: return "Corrosion";
-    }
-    return "Inconnu";
-}
 
 RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -287,21 +255,13 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
         checkResolve();
     });
 
+    agentRunner = new AgentRunner(this);
+    agentRunner->setLogCallback([this](const std::string& msg) {
+        combatLog->append(QString::fromStdString(msg));
+    });
+
     simulator.setExternalAgentQueryCallback([this](const std::string& stateJson, int playerNum) {
-        QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(stateJson));
-        QJsonObject stateObj = doc.object();
-        
-        ControlMode mode = (playerNum == 1) ? 
-            static_cast<ControlMode>(char1ModeCombo->currentIndex()) : 
-            static_cast<ControlMode>(char2ModeCombo->currentIndex());
-            
-        QString actionStr;
-        if (mode == ControlMode::Script) {
-            actionStr = queryScript(stateObj, playerNum);
-        } else if (mode == ControlMode::TCP) {
-            actionStr = queryTCP(stateObj, playerNum);
-        }
-        return actionStr.toStdString();
+        return agentRunner->query(stateJson, playerNum);
     });
 
     loadEntities();
@@ -339,66 +299,35 @@ void RunPage::loadEntities() {
 }
 
 void RunPage::startCombat() {
-    if (p1Socket) {
-        p1Socket->disconnectFromHost();
-    }
-    if (p2Socket) {
-        p2Socket->disconnectFromHost();
-    }
-
     QString n1 = char1Combo->currentText();
     QString n2 = char2Combo->currentText();
     
-    auto opt1 = DataStore::getInstance().getEntityTemplate(n1.toStdString());
-    auto opt2 = DataStore::getInstance().getEntityTemplate(n2.toStdString());
-    
-    Entity f1 = opt1 ? opt1.value() : Entity(n1.toStdString());
-    Entity f2 = opt2 ? opt2.value() : Entity(n2.toStdString());
-    
-    if (!opt1) { f1.force = 10.0f; f1.blood = 32.0f; f1.stade = 1; }
-    if (!opt2) { f2.force = 8.0f; f2.blood = 32.0f; f2.stade = 1; }
-
-    // Assign Weapon 1
-    QString w1 = char1WeaponCombo->currentText();
-    if (w1 != "Aucune") {
-        auto wOpt = DataStore::getInstance().getWeaponTemplate(w1.toStdString());
-        if (wOpt) f1.weapon = wOpt;
-    } else {
-        f1.weapon = std::nullopt;
-    }
-
-    // Assign Armor 1
-    QString a1 = char1ArmorCombo->currentText();
-    if (a1 != "Aucune") {
-        auto aOpt = DataStore::getInstance().getArmorTemplate(a1.toStdString());
-        if (aOpt) f1.armor = aOpt;
-    } else {
-        f1.armor = std::nullopt;
-    }
-
-    // Assign Weapon 2
-    QString w2 = char2WeaponCombo->currentText();
-    if (w2 != "Aucune") {
-        auto wOpt = DataStore::getInstance().getWeaponTemplate(w2.toStdString());
-        if (wOpt) f2.weapon = wOpt;
-    } else {
-        f2.weapon = std::nullopt;
-    }
-
-    // Assign Armor 2
-    QString a2 = char2ArmorCombo->currentText();
-    if (a2 != "Aucune") {
-        auto aOpt = DataStore::getInstance().getArmorTemplate(a2.toStdString());
-        if (aOpt) f2.armor = aOpt;
-    } else {
-        f2.armor = std::nullopt;
-    }
-    
-    f1.wounds.clear();
-    f2.wounds.clear();
+    Entity f1 = DataStore::getInstance().createFighter(n1.toStdString(),
+                                                       char1WeaponCombo->currentText().toStdString(),
+                                                       char1ArmorCombo->currentText().toStdString(),
+                                                       10.0f);
+    Entity f2 = DataStore::getInstance().createFighter(n2.toStdString(),
+                                                       char2WeaponCombo->currentText().toStdString(),
+                                                       char2ArmorCombo->currentText().toStdString(),
+                                                       8.0f);
     
     ControlMode mode1 = static_cast<ControlMode>(char1ModeCombo->currentIndex());
     ControlMode mode2 = static_cast<ControlMode>(char2ModeCombo->currentIndex());
+    
+    AgentConfig config1;
+    config1.mode = mode1;
+    config1.scriptPath = scriptPathEdit1->text().toStdString();
+    config1.tcpHost = tcpHostEdit1->text().toStdString();
+    config1.tcpPort = tcpPortEdit1->value();
+
+    AgentConfig config2;
+    config2.mode = mode2;
+    config2.scriptPath = scriptPathEdit2->text().toStdString();
+    config2.tcpHost = tcpHostEdit2->text().toStdString();
+    config2.tcpPort = tcpPortEdit2->value();
+
+    agentRunner->configurePlayer1(config1);
+    agentRunner->configurePlayer2(config2);
     
     simulator.startCombat(f1, f2, mode1, mode2);
 
@@ -434,7 +363,7 @@ void RunPage::updateCombatUI() {
             if (w.empty()) return QString("Aucune");
             QString res = "[";
             for (size_t i = 0; i < w.size(); ++i) {
-                res += getStageName(w[i].effectiveness);
+                res += QString::fromStdString(getStageName(w[i].effectiveness));
                 if (w[i].damageType == DamageType::Tranchant) {
                     res += " (Tranchante)";
                 } else if (w[i].damageType == DamageType::Contondant) {
@@ -633,118 +562,7 @@ void RunPage::saveCombatLog() {
     }
 }
 
-QString RunPage::queryScript(const QJsonObject& state, int playerNum) {
-    QString scriptPath = (playerNum == 1) ? scriptPathEdit1->text() : scriptPathEdit2->text();
-    if (scriptPath.isEmpty()) {
-        scriptPath = "scripts/ai_agent.py";
-    }
-    
-    QJsonDocument doc(state);
-    QString jsonStr(doc.toJson(QJsonDocument::Compact));
-    
-    QProcess process;
-    QStringList arguments;
-    arguments << scriptPath << jsonStr;
-    
-    process.start("python3", arguments);
-    if (!process.waitForFinished(5000)) { // 5 seconds timeout for python script
-        process.kill();
-        combatLog->append("❌ [Script] Timeout lors de l'exécution du script Python.");
-        return "Passer";
-    }
-    
-    QByteArray output = process.readAllStandardOutput().trimmed();
-    QByteArray errOutput = process.readAllStandardError().trimmed();
-    
-    if (process.exitCode() != 0) {
-        combatLog->append("❌ [Script] Le script a échoué avec le code " + QString::number(process.exitCode()) + " : " + QString::fromUtf8(errOutput));
-        return "Passer";
-    }
-    
-    QJsonParseError parseError;
-    QJsonDocument respDoc = QJsonDocument::fromJson(output, &parseError);
-    if (parseError.error != QJsonParseError::NoError) {
-        combatLog->append("❌ [Script] Erreur de parsing JSON de la réponse : " + parseError.errorString() + "\nStdout: " + QString::fromUtf8(output));
-        return "Passer";
-    }
-    
-    QJsonObject respObj = respDoc.object();
-    return respObj["action"].toString("Passer");
-}
 
-QString RunPage::queryTCP(const QJsonObject& state, int playerNum) {
-    QString host = (playerNum == 1) ? tcpHostEdit1->text() : tcpHostEdit2->text();
-    int port = (playerNum == 1) ? tcpPortEdit1->value() : tcpPortEdit2->value();
-    if (host.isEmpty()) host = "127.0.0.1";
-    
-    QTcpSocket*& socket = (playerNum == 1) ? p1Socket : p2Socket;
-    if (!socket) {
-        socket = new QTcpSocket(this);
-    }
-    
-    // If socket is connected to a different host/port, close it first
-    if (socket->state() != QAbstractSocket::UnconnectedState && 
-        (socket->peerAddress().toString() != host && socket->peerName() != host || socket->peerPort() != port)) {
-        socket->disconnectFromHost();
-        if (socket->state() != QAbstractSocket::UnconnectedState) {
-            socket->waitForDisconnected(1000);
-        }
-    }
-    
-    if (socket->state() == QAbstractSocket::UnconnectedState) {
-        socket->connectToHost(host, port);
-        if (!socket->waitForConnected(3000)) { // 3 seconds timeout to connect
-            combatLog->append("❌ [TCP] Impossible de se connecter au serveur " + host + ":" + QString::number(port));
-            return "Passer";
-        }
-    }
-    
-    QJsonDocument doc(state);
-    QByteArray data = doc.toJson(QJsonDocument::Compact) + "\n";
-    socket->write(data);
-    if (!socket->waitForBytesWritten(2000)) {
-        combatLog->append("❌ [TCP] Erreur d'écriture sur la socket.");
-        return "Passer";
-    }
-    
-    // Wait for response (up to 10 seconds total)
-    QByteArray responseData;
-    int remainingTimeMs = 10000;
-    QElapsedTimer timer;
-    timer.start();
-    
-    while (remainingTimeMs > 0) {
-        if (socket->state() != QAbstractSocket::ConnectedState) {
-            break;
-        }
-        if (socket->waitForReadyRead(remainingTimeMs)) {
-            responseData += socket->readAll();
-            if (responseData.contains('\n')) {
-                break; // Received complete line
-            }
-        } else {
-            break; // Timeout or error
-        }
-        remainingTimeMs = 10000 - timer.elapsed();
-    }
-    
-    if (responseData.isEmpty()) {
-        combatLog->append("❌ [TCP] Timeout de 10 secondes dépassé ou aucune réponse reçue.");
-        return "Passer";
-    }
-    
-    // Clean and parse response
-    QByteArray line = responseData.split('\n').first().trimmed();
-    QJsonParseError parseError;
-    QJsonDocument respDoc = QJsonDocument::fromJson(line, &parseError);
-    if (parseError.error != QJsonParseError::NoError) {
-        combatLog->append("❌ [TCP] Erreur de parsing JSON du serveur : " + parseError.errorString() + "\nBrut: " + QString::fromUtf8(line));
-        return "Passer";
-    }
-    
-    QJsonObject respObj = respDoc.object();
-    return respObj["action"].toString("Passer");
-}
 
 void RunPage::checkResolve() {
     bool p1FinishedActual = simulator.isP1Finished() || (char1ModeCombo->currentIndex() != 0);

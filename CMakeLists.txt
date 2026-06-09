@@ -6,8 +6,9 @@ project(DanjonSimulator LANGUAGES CXX)
 
 # 2. On définit nos fichiers sources
 file(GLOB BACK_SOURCES "./back/core/*.cpp" "./back/data/*.cpp" "./back/systems/*.cpp")
+file(GLOB BINDING_SOURCES "./back/bindings/*.cpp")
 file(GLOB FRONT_SOURCES "./front/src/*.cpp" "./front/include/*.hpp")
-add_executable(DanjonSimulator main.cpp ${BACK_SOURCES} ${FRONT_SOURCES})
+add_executable(DanjonSimulator main.cpp ${BACK_SOURCES} ${BINDING_SOURCES} ${FRONT_SOURCES})
 
 # Qt6 Configuration
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)

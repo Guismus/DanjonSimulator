@@ -11,7 +11,7 @@
 #include <optional>
 #include "../../back/core/simulator.hpp"
 
-class QTcpSocket;
+class AgentRunner;
 
 class RunPage : public QWidget {
     Q_OBJECT
@@ -61,8 +61,7 @@ private:
 
     Simulator simulator;
 
-    QTcpSocket* p1Socket = nullptr;
-    QTcpSocket* p2Socket = nullptr;
+    AgentRunner* agentRunner = nullptr;
 
     void loadEntities();
     void startCombat();
@@ -70,7 +69,4 @@ private:
     void resolveTurn();
     void saveCombatLog();
     void checkResolve();
-
-    QString queryScript(const QJsonObject& state, int playerNum);
-    QString queryTCP(const QJsonObject& state, int playerNum);
 };
