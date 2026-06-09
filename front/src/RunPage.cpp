@@ -8,9 +8,8 @@
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
-#include <QDateTime>
-
-
+#include <QMenu>
+#include <QAction>
 
 RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -146,6 +145,7 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     p1AttackBtn = new QPushButton("Préparer Attaque");
     p1ParryBtn = new QPushButton("Préparer Parade");
     p1DodgeBtn = new QPushButton("Préparer Esquive");
+    p1MagicBtn = new QPushButton("Préparer Magie");
     p1PassBtn = new QPushButton("Finir le Tour");
     p1CancelBtn = new QPushButton("Annuler Action");
     f1Layout->addWidget(p1NameLabel);
@@ -153,6 +153,7 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     f1Layout->addWidget(p1AttackBtn);
     f1Layout->addWidget(p1ParryBtn);
     f1Layout->addWidget(p1DodgeBtn);
+    f1Layout->addWidget(p1MagicBtn);
     f1Layout->addWidget(p1PassBtn);
     f1Layout->addWidget(p1CancelBtn);
     
@@ -164,6 +165,7 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     p2AttackBtn = new QPushButton("Préparer Attaque");
     p2ParryBtn = new QPushButton("Préparer Parade");
     p2DodgeBtn = new QPushButton("Préparer Esquive");
+    p2MagicBtn = new QPushButton("Préparer Magie");
     p2PassBtn = new QPushButton("Finir le Tour");
     p2CancelBtn = new QPushButton("Annuler Action");
     f2Layout->addWidget(p2NameLabel);
@@ -171,6 +173,7 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     f2Layout->addWidget(p2AttackBtn);
     f2Layout->addWidget(p2ParryBtn);
     f2Layout->addWidget(p2DodgeBtn);
+    f2Layout->addWidget(p2MagicBtn);
     f2Layout->addWidget(p2PassBtn);
     f2Layout->addWidget(p2CancelBtn);
     
@@ -225,6 +228,54 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     connect(p1DodgeBtn, &QPushButton::clicked, [this, addActionP1]() {
         addActionP1(ActionType::Dodge);
     });
+    connect(p1MagicBtn, &QPushButton::clicked, [this]() {
+        auto& f1Opt = simulator.getFighter1();
+        if (!f1Opt.has_value()) return;
+        Entity& f1 = f1Opt.value();
+        
+        bool hasBase = (f1.magicReserve >= 10.0f);
+        if (f1.magicType == "Eaux maternelles" && f1.magicReserve < 25.0f) {
+            hasBase = false;
+        }
+        
+        bool hasCat = (f1.catalyst.has_value() && f1.catalyst->reserve >= 10);
+        if (f1.catalyst.has_value() && f1.catalyst->magicType == "Eaux maternelles" && f1.catalyst->reserve < 25) {
+            hasCat = false;
+        }
+        
+        if (hasBase && hasCat) {
+            QMenu menu(this);
+            
+            float baseCost = (f1.magicType == "Eaux maternelles") ? 25.0f : 10.0f;
+            QString baseLabel = QString("Base : %1 (%2 Mana, Coût : %3)")
+                                .arg(QString::fromStdString(f1.magicType))
+                                .arg(QString::number(f1.magicReserve, 'f', 1))
+                                .arg(baseCost);
+            QAction* baseAct = menu.addAction(baseLabel);
+            
+            float catCost = (f1.catalyst->magicType == "Eaux maternelles") ? 25.0f : 10.0f;
+            QString catLabel = QString("Catalyseur : %1 (Réserve : %2, Coût : %3)")
+                               .arg(QString::fromStdString(f1.catalyst->magicType))
+                               .arg(f1.catalyst->reserve)
+                               .arg(catCost);
+            QAction* catAct = menu.addAction(catLabel);
+            
+            QAction* selected = menu.exec(QCursor::pos());
+            if (selected == baseAct) {
+                simulator.addActionP1(ActionType::Magic, f1.magicType, false);
+                updateCombatUI();
+            } else if (selected == catAct) {
+                simulator.addActionP1(ActionType::Magic, f1.catalyst->magicType, true);
+                updateCombatUI();
+            }
+        } else if (hasCat) {
+            simulator.addActionP1(ActionType::Magic, f1.catalyst->magicType, true);
+            updateCombatUI();
+        } else if (hasBase) {
+            simulator.addActionP1(ActionType::Magic, f1.magicType, false);
+            updateCombatUI();
+        }
+    });
     connect(p1CancelBtn, &QPushButton::clicked, [this]() {
         simulator.popActionP1();
         updateCombatUI();
@@ -238,6 +289,54 @@ RunPage::RunPage(QWidget *parent) : QWidget(parent) {
     });
     connect(p2DodgeBtn, &QPushButton::clicked, [this, addActionP2]() {
         addActionP2(ActionType::Dodge);
+    });
+    connect(p2MagicBtn, &QPushButton::clicked, [this]() {
+        auto& f2Opt = simulator.getFighter2();
+        if (!f2Opt.has_value()) return;
+        Entity& f2 = f2Opt.value();
+        
+        bool hasBase = (f2.magicReserve >= 10.0f);
+        if (f2.magicType == "Eaux maternelles" && f2.magicReserve < 25.0f) {
+            hasBase = false;
+        }
+        
+        bool hasCat = (f2.catalyst.has_value() && f2.catalyst->reserve >= 10);
+        if (f2.catalyst.has_value() && f2.catalyst->magicType == "Eaux maternelles" && f2.catalyst->reserve < 25) {
+            hasCat = false;
+        }
+        
+        if (hasBase && hasCat) {
+            QMenu menu(this);
+            
+            float baseCost = (f2.magicType == "Eaux maternelles") ? 25.0f : 10.0f;
+            QString baseLabel = QString("Base : %1 (%2 Mana, Coût : %3)")
+                                .arg(QString::fromStdString(f2.magicType))
+                                .arg(QString::number(f2.magicReserve, 'f', 1))
+                                .arg(baseCost);
+            QAction* baseAct = menu.addAction(baseLabel);
+            
+            float catCost = (f2.catalyst->magicType == "Eaux maternelles") ? 25.0f : 10.0f;
+            QString catLabel = QString("Catalyseur : %1 (Réserve : %2, Coût : %3)")
+                               .arg(QString::fromStdString(f2.catalyst->magicType))
+                               .arg(f2.catalyst->reserve)
+                               .arg(catCost);
+            QAction* catAct = menu.addAction(catLabel);
+            
+            QAction* selected = menu.exec(QCursor::pos());
+            if (selected == baseAct) {
+                simulator.addActionP2(ActionType::Magic, f2.magicType, false);
+                updateCombatUI();
+            } else if (selected == catAct) {
+                simulator.addActionP2(ActionType::Magic, f2.catalyst->magicType, true);
+                updateCombatUI();
+            }
+        } else if (hasCat) {
+            simulator.addActionP2(ActionType::Magic, f2.catalyst->magicType, true);
+            updateCombatUI();
+        } else if (hasBase) {
+            simulator.addActionP2(ActionType::Magic, f2.magicType, false);
+            updateCombatUI();
+        }
     });
     connect(p2CancelBtn, &QPushButton::clicked, [this]() {
         simulator.popActionP2();
@@ -379,7 +478,11 @@ void RunPage::updateCombatUI() {
             return res;
         };
         
-        p1NameLabel->setText(QString::fromStdString(f1.getName()));
+        QString p1Name = QString::fromStdString(f1.getName());
+        if (f1.invulnerableTurnsLeft > 0) {
+            p1Name += QString(" [Invulnérable (%1 trs)]").arg(f1.invulnerableTurnsLeft);
+        }
+        p1NameLabel->setText(p1Name);
         
         QString armorInfo1 = "Armure : Aucune";
         if (f1.armor.has_value()) {
@@ -428,16 +531,29 @@ void RunPage::updateCombatUI() {
             classDetails1 = "Classe : " + QString::fromStdString(f1.characterClass.value()) + "\n";
         }
 
+        QString magicInfo1 = "";
+        if (f1.magicReserve > 0.0f) {
+            magicInfo1 = "Mana : " + QString::number(f1.magicReserve, 'f', 1) + " (Sort : " + QString::fromStdString(f1.magicType) + ")\n";
+        }
+        if (f1.catalyst.has_value()) {
+            magicInfo1 += "Catalyseur : " + QString::number(f1.catalyst->reserve) + " chg (Sort : " + QString::fromStdString(f1.catalyst->magicType) + ")\n";
+        }
+
         p1HpLabel->setText(classDetails1 +
                            "Blessures : " + formatWounds(f1.wounds) + "\n" +
                            "Saignement : " + QString::fromStdString(f1.getBleedingState()) + " (" + QString::number(f1.getBleedingRate()) + " tics/tour)\n" +
                            "Sang : " + QString::number(f1.blood, 'f', 1) + " / 32.0 tics\n" +
                            "Endurance : " + QString::number(f1.physicalReserve) + " / " + QString::number(f1.maxPhysicalReserve) + 
                            " (" + QString::fromStdString(f1.getPhysicalState()) + ")\n" +
+                           magicInfo1 +
                            armorInfo1 + "\n" +
                            weaponInfo1 + "\n\nActions préparées :\n" + formatActions(simulator.getP1Actions()));
         
-        p2NameLabel->setText(QString::fromStdString(f2.getName()));
+        QString p2Name = QString::fromStdString(f2.getName());
+        if (f2.invulnerableTurnsLeft > 0) {
+            p2Name += QString(" [Invulnérable (%1 trs)]").arg(f2.invulnerableTurnsLeft);
+        }
+        p2NameLabel->setText(p2Name);
         
         QString armorInfo2 = "Armure : Aucune";
         if (f2.armor.has_value()) {
@@ -467,12 +583,21 @@ void RunPage::updateCombatUI() {
             classDetails2 = "Classe : " + QString::fromStdString(f2.characterClass.value()) + "\n";
         }
 
+        QString magicInfo2 = "";
+        if (f2.magicReserve > 0.0f) {
+            magicInfo2 = "Mana : " + QString::number(f2.magicReserve, 'f', 1) + " (Sort : " + QString::fromStdString(f2.magicType) + ")\n";
+        }
+        if (f2.catalyst.has_value()) {
+            magicInfo2 += "Catalyseur : " + QString::number(f2.catalyst->reserve) + " chg (Sort : " + QString::fromStdString(f2.catalyst->magicType) + ")\n";
+        }
+
         p2HpLabel->setText(classDetails2 +
                            "Blessures : " + formatWounds(f2.wounds) + "\n" +
                            "Saignement : " + QString::fromStdString(f2.getBleedingState()) + " (" + QString::number(f2.getBleedingRate()) + " tics/tour)\n" +
                            "Sang : " + QString::number(f2.blood, 'f', 1) + " / 32.0 tics\n" +
                            "Endurance : " + QString::number(f2.physicalReserve) + " / " + QString::number(f2.maxPhysicalReserve) + 
                            " (" + QString::fromStdString(f2.getPhysicalState()) + ")\n" +
+                           magicInfo2 +
                            armorInfo2 + "\n" +
                            weaponInfo2 + "\n\nActions préparées :\n" + formatActions(simulator.getP2Actions()));
         
@@ -480,32 +605,63 @@ void RunPage::updateCombatUI() {
             p1AttackBtn->setEnabled(false);
             p1ParryBtn->setEnabled(false);
             p1DodgeBtn->setEnabled(false);
+            p1MagicBtn->setEnabled(false);
             p1PassBtn->setEnabled(false);
             p1CancelBtn->setEnabled(false);
             p2AttackBtn->setEnabled(false);
             p2ParryBtn->setEnabled(false);
             p2DodgeBtn->setEnabled(false);
+            p2MagicBtn->setEnabled(false);
             p2PassBtn->setEnabled(false);
             p2CancelBtn->setEnabled(false);
         } else {
             bool p1Manual = (char1ModeCombo->currentIndex() == 0);
-            p1AttackBtn->setEnabled(p1Manual && !simulator.isP1Finished());
-            p1ParryBtn->setEnabled(p1Manual && !simulator.isP1Finished());
-            p1DodgeBtn->setEnabled(p1Manual && !simulator.isP1Finished());
+            bool p1CanAct = p1Manual && !simulator.isP1Finished() && (f1.invulnerableTurnsLeft == 0);
+            p1AttackBtn->setEnabled(p1CanAct);
+            p1ParryBtn->setEnabled(p1CanAct);
+            p1DodgeBtn->setEnabled(p1CanAct);
+            
+            bool p1HasMagic = (f1.magicReserve > 0.0f || f1.catalyst.has_value());
+            p1MagicBtn->setVisible(p1HasMagic);
+            
+            bool p1CanCast = false;
+            if (f1.magicReserve >= 10.0f) p1CanCast = true;
+            if (f1.magicType == "Eaux maternelles" && f1.magicReserve >= 25.0f) p1CanCast = true;
+            if (f1.catalyst.has_value()) {
+                if (f1.catalyst->reserve >= 10) p1CanCast = true;
+                if (f1.catalyst->magicType == "Eaux maternelles" && f1.catalyst->reserve >= 25) p1CanCast = true;
+            }
+            p1MagicBtn->setEnabled(p1CanAct && p1CanCast);
+
             p1PassBtn->setEnabled(p1Manual && !simulator.isP1Finished());
-            p1CancelBtn->setEnabled(p1Manual && (simulator.isP1Finished() || !simulator.getP1Actions().empty()));
+            p1CancelBtn->setEnabled(p1CanAct && (simulator.isP1Finished() || !simulator.getP1Actions().empty()));
 
             bool p2Manual = (char2ModeCombo->currentIndex() == 0);
-            p2AttackBtn->setEnabled(p2Manual && !simulator.isP2Finished());
-            p2ParryBtn->setEnabled(p2Manual && !simulator.isP2Finished());
-            p2DodgeBtn->setEnabled(p2Manual && !simulator.isP2Finished());
-            p2PassBtn->setEnabled(p2Manual && !simulator.isP2Finished());
-            p2CancelBtn->setEnabled(p2Manual && (simulator.isP2Finished() || !simulator.getP2Actions().empty()));
+            bool p2CanAct = p2Manual && !simulator.isP2Finished() && (f2.invulnerableTurnsLeft == 0);
+            p2AttackBtn->setEnabled(p2CanAct);
+            p2ParryBtn->setEnabled(p2CanAct);
+            p2DodgeBtn->setEnabled(p2CanAct);
             
-            auto setBtnText = [this](QPushButton* btnAttack, QPushButton* btnParry, QPushButton* btnDodge, const Entity& entity, const std::vector<QueuedAction>& actions, int freeCount) {
+            bool p2HasMagic = (f2.magicReserve > 0.0f || f2.catalyst.has_value());
+            p2MagicBtn->setVisible(p2HasMagic);
+            
+            bool p2CanCast = false;
+            if (f2.magicReserve >= 10.0f) p2CanCast = true;
+            if (f2.magicType == "Eaux maternelles" && f2.magicReserve >= 25.0f) p2CanCast = true;
+            if (f2.catalyst.has_value()) {
+                if (f2.catalyst->reserve >= 10) p2CanCast = true;
+                if (f2.catalyst->magicType == "Eaux maternelles" && f2.catalyst->reserve >= 25) p2CanCast = true;
+            }
+            p2MagicBtn->setEnabled(p2CanAct && p2CanCast);
+
+            p2PassBtn->setEnabled(p2Manual && !simulator.isP2Finished());
+            p2CancelBtn->setEnabled(p2CanAct && (simulator.isP2Finished() || !simulator.getP2Actions().empty()));
+            
+            auto setBtnText = [this](QPushButton* btnAttack, QPushButton* btnParry, QPushButton* btnDodge, QPushButton* btnMagic, const Entity& entity, const std::vector<QueuedAction>& actions, int freeCount) {
                 float attackMult = simulator.getNextMultiplier(entity, actions, ActionType::Attack, freeCount);
                 float parryMult = simulator.getNextMultiplier(entity, actions, ActionType::Parry, freeCount);
                 float dodgeMult = simulator.getNextMultiplier(entity, actions, ActionType::Dodge, freeCount);
+                float magicMult = simulator.getNextMultiplier(entity, actions, ActionType::Magic, freeCount);
                 
                 auto formatSuffix = [](float mult) {
                     return mult > 1.0f ? " (Surcad. x" + QString::number(mult, 'f', 1) + ")" : " (Gratuit)";
@@ -514,9 +670,16 @@ void RunPage::updateCombatUI() {
                 btnAttack->setText("Attaquer" + formatSuffix(attackMult));
                 btnParry->setText("Parer" + formatSuffix(parryMult));
                 btnDodge->setText("Esquiver" + formatSuffix(dodgeMult));
+                std::string btnText = "Lancer Magie";
+                if (!entity.catalyst.has_value() && !entity.magicType.empty()) {
+                    btnText = "Lancer " + entity.magicType;
+                } else if (entity.catalyst.has_value() && entity.magicReserve <= 0.0f) {
+                    btnText = "Lancer " + entity.catalyst->magicType;
+                }
+                btnMagic->setText(QString::fromStdString(btnText) + formatSuffix(magicMult));
             };
-            setBtnText(p1AttackBtn, p1ParryBtn, p1DodgeBtn, f1, simulator.getP1Actions(), simulator.getP1FreeActions());
-            setBtnText(p2AttackBtn, p2ParryBtn, p2DodgeBtn, f2, simulator.getP2Actions(), simulator.getP2FreeActions());
+            setBtnText(p1AttackBtn, p1ParryBtn, p1DodgeBtn, p1MagicBtn, f1, simulator.getP1Actions(), simulator.getP1FreeActions());
+            setBtnText(p2AttackBtn, p2ParryBtn, p2DodgeBtn, p2MagicBtn, f2, simulator.getP2Actions(), simulator.getP2FreeActions());
         }
     }
 }

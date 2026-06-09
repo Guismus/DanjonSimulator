@@ -23,6 +23,8 @@ void test_stat_penalties_rounding();
 void test_equipment_loading();
 void test_class_immunities();
 void test_aegis_delayed_wound_debuff();
+void test_catalyst_loading();
+
 
 // Simulator & overclock tests (test_simulator.cpp)
 void test_simulator();
@@ -30,6 +32,11 @@ void test_overclock_simulation();
 
 // Advanced wear and magic tests (test_magic_durability.cpp)
 void test_advanced_wear_and_magic();
+void test_eaux_maternelles();
+void test_magic_catalyst_selection();
+void test_bal_des_lucioles();
+void test_generic_duration_heal_and_boost();
+
 
 #include "../back/data/DataStore.hpp"
 
@@ -41,6 +48,14 @@ int main() {
     }
     if (!DataStore::getInstance().loadEnergySystem("data/energy_system.json")) {
         std::println(stderr, "Failed to load energy system");
+        return 1;
+    }
+    if (!DataStore::getInstance().loadCatalysts("data/catalysts.json")) {
+        std::println(stderr, "Failed to load catalysts");
+        return 1;
+    }
+    if (!DataStore::getInstance().loadSpells("data/magies")) {
+        std::println(stderr, "Failed to load spells");
         return 1;
     }
 
@@ -61,6 +76,8 @@ int main() {
     RUN_TEST(test_equipment_loading);
     RUN_TEST(test_class_immunities);
     RUN_TEST(test_aegis_delayed_wound_debuff);
+    RUN_TEST(test_catalyst_loading);
+
 
     // Simulator / Overclock tests
     RUN_TEST(test_simulator);
@@ -68,6 +85,11 @@ int main() {
 
     // Advanced wear and magic tests
     RUN_TEST(test_advanced_wear_and_magic);
+    RUN_TEST(test_eaux_maternelles);
+    RUN_TEST(test_magic_catalyst_selection);
+    RUN_TEST(test_bal_des_lucioles);
+    RUN_TEST(test_generic_duration_heal_and_boost);
+
 
     std::println("All unit tests completed successfully!");
     return 0;

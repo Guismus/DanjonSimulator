@@ -1,0 +1,11 @@
+{
+  "name": "Offensive",
+  "cost": 10.0,
+  "effects": [
+    {
+      "type": "damage",
+      "nature": "magique",
+      "damage_type": "feu"
+    }
+  ]
+}

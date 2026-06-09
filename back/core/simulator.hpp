@@ -48,8 +48,8 @@ public:
     ControlMode getP2Mode() const { return p2Mode; }
 
     // Actions manipulation
-    void addActionP1(ActionType type);
-    void addActionP2(ActionType type);
+    void addActionP1(ActionType type, const std::string& magicSpell = "", bool useCatalyst = false);
+    void addActionP2(ActionType type, const std::string& magicSpell = "", bool useCatalyst = false);
     void popActionP1();
     void popActionP2();
     void clearActions() {

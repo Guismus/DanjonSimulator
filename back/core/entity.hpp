@@ -46,6 +46,8 @@ enum class ControlMode {
 struct QueuedAction {
     ActionType type;
     float overclockMultiplier = 1.0f;
+    std::string magicSpell = "";
+    bool useCatalyst = false;
 };
 
 struct Weapon {
@@ -91,6 +93,18 @@ struct Wound {
         : effectiveness(eff), damageType(type), turnApplied(turn) {}
 };
 
+struct ActiveEffect {
+    std::string type;             // "invulnerability", "heal", "boost", "attack_buff"
+    int duration = 0;             // remaining turns
+    float forceBoost = 0.0f;
+    float speedBoost = 0.0f;
+    std::string power = "";       // for heal: "extreme", "moyen", etc.
+    int casterMagicPower = 0;     // for scaling heals
+    float burnMultiplier = 0.0f;  // for attack burn modifiers
+    std::string healPower = "";   // for healing triggered on attack
+    std::string spellName = "";   // source spell name for log output
+};
+
 struct WeaponDamageMultipliers {
     float mainsNu = 0.95f;
     float legere = 1.0f;
@@ -127,6 +141,7 @@ public:
     std::optional<Weapon> weapon;
     std::optional<Armor> armor;
     std::optional<Catalyst> catalyst;
+    std::vector<Catalyst> catalysts;
     std::string magicType = "Offensive";
 
     DamageType damageType = DamageType::Neutre;
@@ -134,6 +149,7 @@ public:
 
     int activeParries = 0;
     int activeDodges = 0;
+    bool balDesLuciolesActive = false;
 
     float wearMultiplierOnFibre = 1.0f;
     float wearMultiplierOnPeau = 1.0f;
@@ -177,8 +193,11 @@ public:
     void reduceWeaponDurability(int amount);
     void reduceArmorDurability(int amount);
     void resetTemporaryCombatStates();
+    void updateActiveEffects(std::vector<std::string>& logs);
+    void decrementActiveEffects(std::vector<std::string>& logs);
 
     int currentTurn = 1;
+    int invulnerableTurnsLeft = 0;
     std::string getNormalizedClass() const;
     int getActiveMaxWoundEffectiveness() const;
     bool isImmuneToPoison() const;
@@ -188,6 +207,7 @@ public:
     float getResistanceTo(DamageType type) const;
 
     std::vector<Wound> wounds; // Tracks current wound stages
+    std::vector<ActiveEffect> activeEffects;
 
 private:
     std::string name;

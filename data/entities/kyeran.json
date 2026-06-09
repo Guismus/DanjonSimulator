@@ -6,5 +6,7 @@
     "vitesse": 21.25,
     "forceMagique": 10,
     "resistanceMagique": 30.25,
-    "rank": "E"
+    "rank": "E",
+    "magicType": "Eaux maternelles",
+    "magicReserve": 30.0
 }

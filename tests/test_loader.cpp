@@ -70,3 +70,23 @@ void test_aegis_delayed_wound_debuff() {
     fighter.currentTurn = 3;
     assert(std::abs(fighter.getEffectiveForce() - 8.5f) < 0.001f);
 }
+
+void test_catalyst_loading() {
+    assert(DataStore::getInstance().loadCatalysts("data/catalysts.json"));
+    auto temp = DataStore::getInstance().getCatalystTemplate("F");
+    assert(temp.has_value());
+    assert(temp->reserve == 100);
+    assert(temp->power == 5);
+    
+    // Also load entities to check Haru
+    assert(DataStore::getInstance().loadEntities("data/entities"));
+    auto haruOpt = DataStore::getInstance().getEntityTemplate("Haru Dahrendorf");
+    assert(haruOpt.has_value());
+    assert(!haruOpt->catalysts.empty());
+    assert(haruOpt->catalysts[0].magicType == "Eaux maternelles");
+    assert(haruOpt->catalysts[0].reserve == 100);
+    assert(haruOpt->catalysts[0].power == 5);
+    assert(haruOpt->catalyst.has_value());
+    assert(haruOpt->catalyst->reserve == 100);
+    assert(haruOpt->catalyst->power == 5);
+}

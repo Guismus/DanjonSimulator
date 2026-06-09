@@ -50,12 +50,14 @@ private:
     QPushButton* p1AttackBtn;
     QPushButton* p1ParryBtn;
     QPushButton* p1DodgeBtn;
+    QPushButton* p1MagicBtn;
     QPushButton* p1PassBtn;
     QPushButton* p2PassBtn;
     QPushButton* p1CancelBtn;
     QPushButton* p2AttackBtn;
     QPushButton* p2ParryBtn;
     QPushButton* p2DodgeBtn;
+    QPushButton* p2MagicBtn;
     QPushButton* p2CancelBtn;
     QTextEdit* combatLog;
 

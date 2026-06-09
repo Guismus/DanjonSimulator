@@ -5,6 +5,21 @@
 #include <cmath>
 #include <format>
 
+static int parseDuration(const nlohmann::json& val) {
+    if (val.is_number()) {
+        return val.get<int>();
+    }
+    if (val.is_string()) {
+        std::string str = val.get<std::string>();
+        size_t idx = 0;
+        try {
+            int d = std::stoi(str, &idx);
+            return d;
+        } catch (...) {}
+    }
+    return 1;
+}
+
 
 Simulator::Simulator() {
 }
@@ -30,19 +45,21 @@ void Simulator::startCombat(const Entity& f1, const Entity& f2, ControlMode m1, 
     currentTurn = 1;
     p1Finished = false;
     p2Finished = false;
+    fighter1->invulnerableTurnsLeft = 0;
+    fighter2->invulnerableTurnsLeft = 0;
 }
 
-void Simulator::addActionP1(ActionType type) {
+void Simulator::addActionP1(ActionType type, const std::string& magicSpell, bool useCatalyst) {
     if (fighter1.has_value()) {
         float multiplier = getNextMultiplier(fighter1.value(), p1Actions, type, p1FreeActions);
-        p1Actions.push_back({type, multiplier});
+        p1Actions.push_back({type, multiplier, magicSpell, useCatalyst});
     }
 }
 
-void Simulator::addActionP2(ActionType type) {
+void Simulator::addActionP2(ActionType type, const std::string& magicSpell, bool useCatalyst) {
     if (fighter2.has_value()) {
         float multiplier = getNextMultiplier(fighter2.value(), p2Actions, type, p2FreeActions);
-        p2Actions.push_back({type, multiplier});
+        p2Actions.push_back({type, multiplier, magicSpell, useCatalyst});
     }
 }
 
@@ -159,7 +176,7 @@ void Simulator::fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>&
     int maxTries = 10;
     
     for (int i = 0; i < maxTries; ++i) {
-        if (entity.isDead() || entity.physicalReserve <= 0) break;
+        if (entity.isDead() || entity.physicalReserve <= 0 || entity.invulnerableTurnsLeft > 0) break;
         
         std::string state = serializeStateJson(entity, actions, opponent, opponentActions);
         
@@ -194,6 +211,10 @@ void Simulator::fetchAutomatedActions(Entity& entity, std::vector<QueuedAction>&
 
 void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const QueuedAction& action, int actionIndex, std::vector<std::string>& logs) {
     if (attacker->isDead() || attacker->physicalReserve <= 0) return;
+    if (attacker->invulnerableTurnsLeft > 0) {
+        logs.push_back(attacker->getName() + " : Incapacité (Invulnérabilité active, ne peut pas agir).");
+        return;
+    }
     
     std::string logMsg = attacker->getName() + " : ";
     
@@ -218,6 +239,8 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
             logMsg += "-> L'attaque est bloquée par la parade (Bouclier en métal) !";
         } else if (eff == -99) {
             logMsg += "-> L'attaque est bloquée par l'armure !";
+        } else if (eff == -96) {
+            logMsg += "-> L'attaque glisse sur sa protection d'invulnérabilité !";
         } else {
             logMsg += "et inflige un " + getStageName(eff) + " physique (" + getDamageTypeName(attacker->getActiveDamageType()) + ")";
             if (wasParrying) {
@@ -252,6 +275,61 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
             }
         }
 
+        float totalBurnMult = 0.0f;
+        std::vector<std::string> healPowers;
+        std::string sourceSpell = "Bal des lucioles";
+        
+        if (attacker->balDesLuciolesActive) {
+            totalBurnMult += 0.9f;
+            healPowers.push_back("moyen");
+        }
+        for (const auto& ae : attacker->activeEffects) {
+            if (ae.type == "attack_buff" || ae.type == "bal_des_lucioles") {
+                totalBurnMult += ae.burnMultiplier;
+                if (!ae.healPower.empty()) {
+                    healPowers.push_back(ae.healPower);
+                }
+                if (!ae.spellName.empty()) {
+                    sourceSpell = ae.spellName;
+                }
+            }
+        }
+
+        if (totalBurnMult > 0.0f && eff != -98 && eff != -96) {
+            float attForce = attacker->getEffectiveForceMagique() * totalBurnMult;
+            float defRes = defender->getEffectiveResistanceMagique();
+            int refLevel = (attForce < defRes) ? attacker->stade : defender->stade;
+            int burnEff = CombatSystem::calculateStatDifference(attForce, defRes, refLevel);
+            float resist = defender->getResistanceTo(DamageType::Feu);
+            if (resist > 0.0f && burnEff >= 0) {
+                burnEff = static_cast<int>(burnEff * (1.0f - resist));
+            }
+            defender->applyWound(burnEff, DamageType::Feu);
+            
+            logMsg += std::format("\n  [{}] Brûle l'adversaire (puissance {:.2f} vs RM {:.2f} -> {})",
+                                  sourceSpell, attForce, defRes, getStageName(burnEff));
+            
+            for (const auto& hp : healPowers) {
+                int maxWound = 2; // Moyen par défaut
+                std::string hpLower = hp;
+                std::transform(hpLower.begin(), hpLower.end(), hpLower.begin(), ::tolower);
+                if (hpLower == "tres_faible" || hpLower == "tres faible" || hpLower == "très faible") maxWound = -2;
+                else if (hpLower == "faible" || hpLower == "neutre") maxWound = 0;
+                else if (hpLower == "fort") maxWound = 3;
+                else if (hpLower == "tres_fort" || hpLower == "tres fort" || hpLower == "très fort") maxWound = 4;
+                else if (hpLower == "extreme") maxWound = 999;
+                
+                if (maxWound == 999) {
+                    attacker->healExtreme();
+                    logMsg += " et se soigne totalement.";
+                } else {
+                    attacker->healWounds(maxWound);
+                    std::string hpLabel = (maxWound == 2) ? "Moyen" : hpLower;
+                    logMsg += std::format(" et se soigne du {}.", hpLabel);
+                }
+            }
+        }
+
         if (defender->isDead()) {
             logMsg += "\n" + defender->getName() + " est K.O !";
         }
@@ -276,79 +354,315 @@ void Simulator::executeSingleAction(Entity* attacker, Entity* defender, const Qu
             logMsg += std::format("[Surcadençage x{:.1f}] ", action.overclockMultiplier);
         }
         
-        // Coût en mana : 10
-        if (!attacker->isMonster && !attacker->consumeMagicReserve(10.0f)) {
-            logMsg += "-> Échec : réserve magique insuffisante (10.0 requis, restant : " + std::format("{:.1f}", attacker->magicReserve) + ")";
-            logs.push_back(logMsg);
-            return;
-        }
-
-        std::string spell = attacker->magicType;
+        std::string spell = action.magicSpell;
+        bool useCat = action.useCatalyst;
         int power = static_cast<int>(attacker->getEffectiveForceMagique());
-        if (attacker->catalyst.has_value()) {
-            spell = attacker->catalyst->magicType;
-            power = attacker->catalyst->power;
+
+        if (spell.empty()) {
+            if (!attacker->catalysts.empty()) {
+                spell = attacker->catalysts[0].magicType;
+                useCat = true;
+            } else {
+                spell = attacker->magicType;
+                useCat = false;
+            }
         }
 
-        if (spell == "Boost" || spell == "Boost Magic") {
-            attacker->applyStatBoost(5.0f, 5.0f);
-            logMsg += std::format("-> Canalise une magie de Boost (Force et Vitesse +5.0).");
-        } else if (spell == "Soins" || spell == "Soins Magic" || spell.find("Soins") != std::string::npos) {
-            if (spell.find("TresFaible") != std::string::npos || (spell == "Soins" && power < 5)) {
-                attacker->healWounds(-2);
-                logMsg += "-> Canalise une magie de Soins (Très Faible : blessures <= -2 guéries).";
-            } else if (spell.find("Faible") != std::string::npos || (spell == "Soins" && power < 10)) {
-                attacker->healWounds(0);
-                logMsg += "-> Canalise une magie de Soins (Faible : blessures <= 0 guéries).";
-            } else if (spell.find("Fort") != std::string::npos || (spell == "Soins" && power < 20)) {
-                attacker->healWounds(3);
-                logMsg += "-> Canalise une magie de Soins (Fort : blessures <= 3 guéries).";
-            } else if (spell.find("TresFort") != std::string::npos || (spell == "Soins" && power < 25)) {
-                attacker->healWounds(4);
-                logMsg += "-> Canalise une magie de Soins (Très Fort : blessures <= 4 guéries).";
-            } else if (spell.find("Extreme") != std::string::npos || (spell == "Soins" && power >= 25)) {
-                attacker->healExtreme();
-                logMsg += "-> Canalise une magie de Soins (Extrême : toutes les blessures guéries, sang restauré).";
-            } else { // Moyen par défaut
-                attacker->healWounds(2);
-                logMsg += "-> Canalise une magie de Soins (Moyen : blessures <= 2 guéries).";
-            }
-        } else { // Offensive par défaut
-            std::optional<int> preArmor;
-            if (defender->armor.has_value()) preArmor = defender->armor->durability;
-
-            bool wasParrying = (defender->activeParries > 0);
-            
-            float magCostMult = action.overclockMultiplier;
-            if (attacker->catalyst.has_value()) {
-                magCostMult *= (1.0f + static_cast<float>(power) / 100.0f);
-            }
-            
-            int eff = CombatSystem::executeAttack(*attacker, *defender, magCostMult, DamageNature::Magique, DamageType::Feu, DataStore::getInstance().getWeaponDamageMultipliers());
-            
-            if (eff == -98) {
-                logMsg += "-> La magie offensive (Feu) est esquivée !";
-            } else if (eff == -97) {
-                logMsg += "-> La magie offensive (Feu) est bloquée par la parade !";
-            } else if (eff == -99) {
-                logMsg += "-> La magie offensive (Feu) est bloquée par l'armure !";
-            } else {
-                logMsg += "-> Lance un sort de Feu et inflige un " + getStageName(eff) + " magique (Feu)";
-                if (wasParrying) {
-                    int pct = (defender->getNormalizedClass() == "AEGIS") ? 25 : 10;
-                    logMsg += " (paré, efficacité réduite de " + std::to_string(pct) + "%)";
+        Catalyst* activeCat = nullptr;
+        if (useCat) {
+            for (auto& cat : attacker->catalysts) {
+                if (cat.magicType == spell) {
+                    activeCat = &cat;
+                    break;
                 }
             }
+        }
 
-            // Log armor durability loss
-            if (defender->armor.has_value() && preArmor.has_value()) {
-                int currentDur = defender->armor->durability;
-                int diff = preArmor.value() - currentDur;
-                if (diff > 0) {
-                    logMsg += std::format("\n  [Armure] {} subit -{} de durabilité ({}/{})",
-                                          defender->armor->name, diff, currentDur, defender->armor->maxDurability);
-                    if (currentDur == 0 && preArmor.value() > 0) {
-                        logMsg += std::format("\n  [Armure] {} est rompue !", defender->armor->name);
+        if (useCat && activeCat) {
+            power = activeCat->power;
+        }
+
+        auto spellOpt = DataStore::getInstance().getSpell(spell);
+        if (!spellOpt) {
+            if (spell.find("Soins") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Soins");
+            else if (spell.find("Boost") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Boost");
+            else if (spell.find("Eaux maternelles") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Eaux maternelles");
+            else if (spell.find("Bal des lucioles") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Bal des lucioles");
+            else if (spell.find("Offensive") != std::string::npos) spellOpt = DataStore::getInstance().getSpell("Offensive");
+        }
+
+        float manaCost = 10.0f;
+        if (spellOpt) {
+            manaCost = spellOpt->cost;
+        }
+
+        if (!attacker->isMonster) {
+            if (useCat && activeCat) {
+                if (activeCat->reserve < static_cast<int>(manaCost)) {
+                    logMsg += "-> Échec : réserve du catalyseur insuffisante (" + std::format("{:.1f}", manaCost) + " requise, restant : " + std::to_string(activeCat->reserve) + ")";
+                    logs.push_back(logMsg);
+                    return;
+                }
+                activeCat->reserve -= static_cast<int>(manaCost);
+                // Sync backwards compatible single catalyst field
+                if (!attacker->catalysts.empty() && attacker->catalyst.has_value()) {
+                    attacker->catalyst = attacker->catalysts[0];
+                }
+            } else {
+                if (!attacker->consumeMagicReserve(manaCost)) {
+                    logMsg += "-> Échec : réserve magique insuffisante (" + std::format("{:.1f}", manaCost) + " requise, restant : " + std::format("{:.1f}", attacker->magicReserve) + ")";
+                    logs.push_back(logMsg);
+                    return;
+                }
+            }
+        }
+        if (spellOpt) {
+            for (const auto& effect : spellOpt->effects) {
+                std::string type = effect.value("type", "");
+                // transform to lowercase
+                std::transform(type.begin(), type.end(), type.begin(), ::tolower);
+
+                if (type == "boost" || type == "stat_boost") {
+                    int duration = 0;
+                    if (effect.contains("duration")) {
+                        duration = parseDuration(effect["duration"]);
+                    }
+                    float forceBoost = effect.value("force", 0.0f);
+                    float speedBoost = effect.value("vitesse", effect.value("speed", 0.0f));
+                    attacker->applyStatBoost(forceBoost, speedBoost);
+                    if (duration > 0) {
+                        ActiveEffect ae;
+                        ae.type = "boost";
+                        ae.duration = duration;
+                        ae.forceBoost = forceBoost;
+                        ae.speedBoost = speedBoost;
+                        ae.spellName = spellOpt->name;
+                        attacker->activeEffects.push_back(ae);
+                    }
+                    std::string statsStr = (forceBoost > 0.0f && speedBoost > 0.0f) ? "la force et la vitesse" 
+                                         : (forceBoost > 0.0f ? "la force" : "la vitesse");
+                    float boostLevel = forceBoost > 0.0f ? forceBoost : speedBoost;
+                    logMsg += std::format("-> {} s'est boosté {} grâce à {} de {:.1f}",
+                                          attacker->getName(), statsStr, spellOpt->name, boostLevel);
+                    if (duration > 0) {
+                        logMsg += std::format(" (pendant {} tours)", duration);
+                    }
+                    logMsg += ".";
+                } else if (type == "heal" || type == "heal_scaling" || type == "heal_fixed") {
+                    int duration = 0;
+                    if (effect.contains("duration")) {
+                        duration = parseDuration(effect["duration"]);
+                    }
+                    std::string powerStr = effect.value("power", "");
+                    if (powerStr.empty()) {
+                        if (effect.value("extreme", false)) {
+                            powerStr = "extreme";
+                        } else {
+                            powerStr = "moyen";
+                        }
+                    }
+                    std::transform(powerStr.begin(), powerStr.end(), powerStr.begin(), ::tolower);
+                    
+                    std::string hpLabel = powerStr;
+                    if (powerStr == "extreme") {
+                        attacker->healExtreme();
+                    } else if (powerStr == "scaling") {
+                        int maxWound = -999;
+                        bool extreme = false;
+                        if (power >= 25) {
+                            extreme = true;
+                        } else {
+                            if (power < 5) maxWound = -2;
+                            else if (power < 10) maxWound = 0;
+                            else if (power < 20) maxWound = 2;
+                            else if (power < 25) maxWound = 3;
+                        }
+                        if (extreme) {
+                            attacker->healExtreme();
+                            hpLabel = "extreme";
+                        } else {
+                            attacker->healWounds(maxWound);
+                            hpLabel = std::format("blessures <= {}", maxWound);
+                        }
+                    } else {
+                        int maxWound = 2; // Moyen par défaut
+                        if (powerStr == "tres_faible" || powerStr == "tres faible" || powerStr == "très faible") maxWound = -2;
+                        else if (powerStr == "faible" || powerStr == "neutre") maxWound = 0;
+                        else if (powerStr == "fort") maxWound = 3;
+                        else if (powerStr == "tres_fort" || powerStr == "tres fort" || powerStr == "très fort") maxWound = 4;
+                        
+                        attacker->healWounds(maxWound);
+                    }
+
+                    logMsg += std::format("-> {} s'est soigné à l'aide de {} (niveau {})", 
+                                          attacker->getName(), spellOpt->name, hpLabel);
+
+                    if (duration > 1) {
+                        ActiveEffect ae;
+                        ae.type = "heal";
+                        ae.duration = duration - 1; // Le soin immédiat a déjà eu lieu
+                        ae.power = powerStr;
+                        ae.casterMagicPower = power;
+                        ae.spellName = spellOpt->name;
+                        attacker->activeEffects.push_back(ae);
+                        logMsg += std::format(" (continu pendant {} tours)", duration);
+                    }
+                    logMsg += ".";
+                } else if (type == "invulnerability" || type == "invulnerable") {
+                    int duration = parseDuration(effect.value("duration", nlohmann::json(2)));
+                    attacker->invulnerableTurnsLeft = duration;
+                    
+                    ActiveEffect ae;
+                    ae.type = "invulnerability";
+                    ae.duration = duration;
+                    ae.spellName = spellOpt->name;
+                    attacker->activeEffects.push_back(ae);
+
+                    logMsg += std::format(" et devient invulnérable pendant {} tours !", duration);
+                } else if (type == "bal_des_lucioles" || type == "attack_buff") {
+                    int duration = parseDuration(effect.value("duration", nlohmann::json(1)));
+                    float burnMultiplier = effect.value("burn_multiplier", effect.value("burn", 0.9f));
+                    std::string healPower = effect.value("heal_power", effect.value("heal", "moyen"));
+
+                    ActiveEffect ae;
+                    ae.type = "attack_buff";
+                    ae.duration = duration;
+                    ae.burnMultiplier = burnMultiplier;
+                    ae.healPower = healPower;
+                    ae.spellName = spellOpt->name;
+                    attacker->activeEffects.push_back(ae);
+
+                    attacker->balDesLuciolesActive = true;
+                    if (spellOpt->name == "Bal des lucioles" || type == "bal_des_lucioles") {
+                        logMsg += "-> Canalise la magie de feu [Bal des lucioles] : s'entoure de flammes pour ce tour.";
+                    } else {
+                        logMsg += std::format("-> Canalise le buff d'attaque [{}] pendant {} tours.", spellOpt->name, duration);
+                    }
+                } else if (type == "damage") {
+                    std::string natureStr = effect.value("nature", "Magique");
+                    std::string dmgTypeStr = effect.value("damage_type", "Feu");
+                    // lowercase them
+                    std::transform(natureStr.begin(), natureStr.end(), natureStr.begin(), ::tolower);
+                    std::transform(dmgTypeStr.begin(), dmgTypeStr.end(), dmgTypeStr.begin(), ::tolower);
+
+                    DamageNature nat = (natureStr == "physique") ? DamageNature::Physique : DamageNature::Magique;
+                    DamageType dt = DamageType::Feu;
+                    if (dmgTypeStr == "contondant") dt = DamageType::Contondant;
+                    else if (dmgTypeStr == "tranchant") dt = DamageType::Tranchant;
+                    else if (dmgTypeStr == "corrosion") dt = DamageType::Corrosion;
+                    else if (dmgTypeStr == "neutre") dt = DamageType::Neutre;
+                    
+                    std::optional<int> preArmor;
+                    if (defender->armor.has_value()) preArmor = defender->armor->durability;
+
+                    bool wasParrying = (defender->activeParries > 0);
+                    float magCostMult = action.overclockMultiplier * effect.value("multiplier", effect.value("power_multiplier", 1.0f));
+                    if (attacker->catalyst.has_value()) {
+                        magCostMult *= (1.0f + static_cast<float>(power) / 100.0f);
+                    }
+                    
+                    int eff = CombatSystem::executeAttack(*attacker, *defender, magCostMult, nat, dt, DataStore::getInstance().getWeaponDamageMultipliers());
+                    
+                    if (eff == -98) {
+                        logMsg += std::format("-> La magie offensive ({}) est esquivée !", dmgTypeStr);
+                    } else if (eff == -97) {
+                        logMsg += "-> La magie offensive est bloquée par la parade !";
+                    } else if (eff == -99) {
+                        logMsg += "-> La magie offensive est bloquée par l'armure !";
+                    } else if (eff == -96) {
+                        logMsg += "-> La magie offensive glisse sur sa protection d'invulnérabilité !";
+                    } else {
+                        logMsg += std::format("-> Lance un sort de {} et inflige un {} magique ({})", dmgTypeStr, getStageName(eff), dmgTypeStr);
+                        if (wasParrying) {
+                            int pct = (defender->getNormalizedClass() == "AEGIS") ? 25 : 10;
+                            logMsg += " (paré, efficacité réduite de " + std::to_string(pct) + "%)";
+                        }
+                    }
+
+                    // Log armor durability loss
+                    if (defender->armor.has_value() && preArmor.has_value()) {
+                        int currentDur = defender->armor->durability;
+                        int diff = preArmor.value() - currentDur;
+                        if (diff > 0) {
+                            logMsg += std::format("\n  [Armure] {} subit -{} de durabilité ({}/{})",
+                                                  defender->armor->name, diff, currentDur, defender->armor->maxDurability);
+                            if (currentDur == 0 && preArmor.value() > 0) {
+                                logMsg += std::format("\n  [Armure] {} est rompue !", defender->armor->name);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (spell == "Boost" || spell == "Boost Magic") {
+                attacker->applyStatBoost(5.0f, 5.0f);
+                logMsg += std::format("-> Canalise une magie de Boost (Force et Vitesse +5.0).");
+            } else if (spell == "Eaux maternelles" || spell.find("Eaux maternelles") != std::string::npos) {
+                attacker->healExtreme();
+                attacker->invulnerableTurnsLeft = 2;
+                logMsg += "-> Canalise la magie d'eau [Eaux maternelles] : Soin extrême (toutes blessures soignées, sang restauré) et devient invulnérable pendant 2 tours !";
+            } else if (spell == "Bal des lucioles" || spell.find("Bal des lucioles") != std::string::npos) {
+                attacker->balDesLuciolesActive = true;
+                logMsg += "-> Canalise la magie de feu [Bal des lucioles] : s'entoure de flammes pour ce tour.";
+            } else if (spell == "Soins" || spell == "Soins Magic" || spell.find("Soins") != std::string::npos) {
+                if (spell.find("TresFaible") != std::string::npos || (spell == "Soins" && power < 5)) {
+                    attacker->healWounds(-2);
+                    logMsg += "-> Canalise une magie de Soins (Très Faible : blessures <= -2 guéries).";
+                } else if (spell.find("Faible") != std::string::npos || (spell == "Soins" && power < 10)) {
+                    attacker->healWounds(0);
+                    logMsg += "-> Canalise une magie de Soins (Faible : blessures <= 0 guéries).";
+                } else if (spell.find("Fort") != std::string::npos || (spell == "Soins" && power < 20)) {
+                    attacker->healWounds(3);
+                    logMsg += "-> Canalise une magie de Soins (Fort : blessures <= 3 guéries).";
+                } else if (spell.find("TresFort") != std::string::npos || (spell == "Soins" && power < 25)) {
+                    attacker->healWounds(4);
+                    logMsg += "-> Canalise une magie de Soins (Très Fort : blessures <= 4 guéries).";
+                } else if (spell.find("Extreme") != std::string::npos || (spell == "Soins" && power >= 25)) {
+                    attacker->healExtreme();
+                    logMsg += "-> Canalise une magie de Soins (Extrême : toutes les blessures guéries, sang restauré).";
+                } else { // Moyen par défaut
+                    attacker->healWounds(2);
+                    logMsg += "-> Canalise une magie de Soins (Moyen : blessures <= 2 guéries).";
+                }
+            } else { // Offensive par défaut
+                std::optional<int> preArmor;
+                if (defender->armor.has_value()) preArmor = defender->armor->durability;
+
+                bool wasParrying = (defender->activeParries > 0);
+                
+                float magCostMult = action.overclockMultiplier;
+                if (attacker->catalyst.has_value()) {
+                    magCostMult *= (1.0f + static_cast<float>(power) / 100.0f);
+                }
+                
+                int eff = CombatSystem::executeAttack(*attacker, *defender, magCostMult, DamageNature::Magique, DamageType::Feu, DataStore::getInstance().getWeaponDamageMultipliers());
+                
+                if (eff == -98) {
+                    logMsg += "-> La magie offensive (Feu) est esquivée !";
+                } else if (eff == -97) {
+                    logMsg += "-> La magie offensive (Feu) est bloquée par la parade !";
+                } else if (eff == -99) {
+                    logMsg += "-> La magie offensive (Feu) est bloquée par l'armure !";
+                } else if (eff == -96) {
+                    logMsg += "-> La magie offensive (Feu) glisse sur sa protection d'invulnérabilité !";
+                } else {
+                    logMsg += "-> Lance un sort de Feu et inflige un " + getStageName(eff) + " magique (Feu)";
+                    if (wasParrying) {
+                        int pct = (defender->getNormalizedClass() == "AEGIS") ? 25 : 10;
+                        logMsg += " (paré, efficacité réduite de " + std::to_string(pct) + "%)";
+                    }
+                }
+
+                // Log armor durability loss
+                if (defender->armor.has_value() && preArmor.has_value()) {
+                    int currentDur = defender->armor->durability;
+                    int diff = preArmor.value() - currentDur;
+                    if (diff > 0) {
+                        logMsg += std::format("\n  [Armure] {} subit -{} de durabilité ({}/{})",
+                                              defender->armor->name, diff, currentDur, defender->armor->maxDurability);
+                        if (currentDur == 0 && preArmor.value() > 0) {
+                            logMsg += std::format("\n  [Armure] {} est rompue !", defender->armor->name);
+                        }
                     }
                 }
             }
@@ -485,6 +799,24 @@ Simulator::TurnResult Simulator::resolveTurn() {
     if (!bleedingHappened) bleedMsg += "\nAucun saignement actif.";
     result.logs.push_back(bleedMsg + "\n");
 
+    // Update and decrement active effects at turn end
+    std::string effectMsg = "\n--- Résolution des Effets Continus ---";
+    std::vector<std::string> effectLogs;
+    if (!fighter1->isDead() && fighter1->physicalReserve > 0) {
+        fighter1->updateActiveEffects(effectLogs);
+        fighter1->decrementActiveEffects(effectLogs);
+    }
+    if (!fighter2->isDead() && fighter2->physicalReserve > 0) {
+        fighter2->updateActiveEffects(effectLogs);
+        fighter2->decrementActiveEffects(effectLogs);
+    }
+    if (!effectLogs.empty()) {
+        for (const auto& log : effectLogs) {
+            effectMsg += "\n" + log;
+        }
+        result.logs.push_back(effectMsg + "\n");
+    }
+
     p1Actions.clear();
     p2Actions.clear();
     p1Finished = false;
@@ -519,6 +851,9 @@ Simulator::TurnResult Simulator::resolveTurn() {
         result.logs.push_back(endMsg);
     } else {
         currentTurn++;
+        if (fighter1->invulnerableTurnsLeft > 0) fighter1->invulnerableTurnsLeft--;
+        if (fighter2->invulnerableTurnsLeft > 0) fighter2->invulnerableTurnsLeft--;
+        
         float v1 = fighter1->getEffectiveVitesse();
         float v2 = fighter2->getEffectiveVitesse();
         int refLevel = std::min(fighter1->stade, fighter2->stade);
@@ -528,5 +863,7 @@ Simulator::TurnResult Simulator::resolveTurn() {
         result.logs.push_back("--- Préparation du Tour " + std::to_string(currentTurn) + " ---\n");
     }
 
+    fighter1->balDesLuciolesActive = false;
+    fighter2->balDesLuciolesActive = false;
     return result;
 }

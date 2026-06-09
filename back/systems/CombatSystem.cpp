@@ -45,6 +45,9 @@ void CombatSystem::executeDodge(Entity& character, float enduranceMultiplier) {
 }
 
 int CombatSystem::executeAttack(Entity& attacker, Entity& defender, float enduranceMultiplier, DamageNature nature, std::optional<DamageType> overrideType, WeaponDamageMultipliers multipliers) {
+    if (defender.invulnerableTurnsLeft > 0) {
+        return -96;
+    }
     DamageType activeType = overrideType.value_or(attacker.getActiveDamageType());
     // Cost in endurance per attack (Pugilat by default = 7.5f)
     float cost = 7.5f; 

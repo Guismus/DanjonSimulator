@@ -1,0 +1,10 @@
+{
+  "name": "Soins",
+  "cost": 10.0,
+  "effects": [
+    {
+      "type": "heal",
+      "power": "scaling"
+    }
+  ]
+}

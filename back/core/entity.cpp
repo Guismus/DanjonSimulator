@@ -1,13 +1,14 @@
 #include "entity.hpp"
 #include <algorithm>
 #include <cmath>
+#include <format>
 
 Entity::Entity(const std::string& name)
     : name(name), stade(1), rank(1), isMonster(false),
       force(0.0f), resistance(0.0f), vitesse(0.0f), forceMagique(0.0f), resistanceMagique(0.0f),
       blood(32.0f), physicalReserve(0.0f), maxPhysicalReserve(0.0f), magicReserve(0.0f),
-      activeParries(0), activeDodges(0),
-      damageType(DamageType::Neutre) {
+      activeParries(0), activeDodges(0), balDesLuciolesActive(false),
+      damageType(DamageType::Neutre), invulnerableTurnsLeft(0) {
 }
 
 const std::string& Entity::getName() const {
@@ -336,6 +337,71 @@ void Entity::reduceArmorDurability(int amount) {
 void Entity::resetTemporaryCombatStates() {
     activeParries = 0;
     activeDodges = 0;
+    balDesLuciolesActive = false;
+}
+
+void Entity::updateActiveEffects(std::vector<std::string>& logs) {
+    for (auto& ae : activeEffects) {
+        if (ae.duration > 0) {
+            if (ae.type == "heal") {
+                int maxWound = 2; // Moyen par défaut
+                std::string hp = ae.power;
+                std::transform(hp.begin(), hp.end(), hp.begin(), ::tolower);
+                
+                if (hp == "extreme") {
+                    healExtreme();
+                    logs.push_back(std::format("  [Effet Continu - Soin] {} se soigne totalement (Soin extrême).", getName()));
+                } else if (hp == "scaling") {
+                    int maxW = -999;
+                    bool extreme = false;
+                    int power = ae.casterMagicPower;
+                    if (power >= 25) {
+                        extreme = true;
+                    } else {
+                        if (power < 5) maxW = -2;
+                        else if (power < 10) maxW = 0;
+                        else if (power < 20) maxW = 2;
+                        else if (power < 25) maxW = 3;
+                    }
+                    if (extreme) {
+                        healExtreme();
+                        logs.push_back(std::format("  [Effet Continu - Soin] {} se soigne totalement (Soin extrême).", getName()));
+                    } else {
+                        healWounds(maxW);
+                        logs.push_back(std::format("  [Effet Continu - Soin] {} se soigne (blessures <= {} guéries).", getName(), maxW));
+                    }
+                } else {
+                    if (hp == "tres_faible" || hp == "tres faible" || hp == "très faible") maxWound = -2;
+                    else if (hp == "faible" || hp == "neutre") maxWound = 0;
+                    else if (hp == "fort") maxWound = 3;
+                    else if (hp == "tres_fort" || hp == "tres fort" || hp == "très fort") maxWound = 4;
+                    
+                    healWounds(maxWound);
+                    logs.push_back(std::format("  [Effet Continu - Soin] {} se soigne (blessures <= {} guéries).", getName(), maxWound));
+                }
+            }
+        }
+    }
+}
+
+void Entity::decrementActiveEffects(std::vector<std::string>& logs) {
+    std::vector<ActiveEffect> remaining;
+    for (auto& ae : activeEffects) {
+        ae.duration--;
+        if (ae.duration > 0) {
+            remaining.push_back(ae);
+        } else {
+            // L'effet a expiré !
+            if (ae.type == "boost") {
+                force -= ae.forceBoost;
+                vitesse -= ae.speedBoost;
+                logs.push_back(std::format("  [Effet Terminé] Le boost de stats de {} sur {} a expiré.", ae.spellName, getName()));
+            } else if (ae.type == "bal_des_lucioles" || ae.type == "attack_buff") {
+                logs.push_back(std::format("  [Effet Terminé] L'effet {} sur {} a expiré.", ae.spellName.empty() ? ae.type : ae.spellName, getName()));
+            }
+        }
+    }
+    activeEffects = remaining;
 }
 
 

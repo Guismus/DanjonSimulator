@@ -1,0 +1,32 @@
+{
+  "ranks": {
+    "F": {
+      "reserve": 100,
+      "power": 5
+    },
+    "E": {
+      "reserve": 150,
+      "power": 20
+    },
+    "D": {
+      "reserve": 250,
+      "power": 40
+    },
+    "C": {
+      "reserve": 450,
+      "power": 70
+    },
+    "B": {
+      "reserve": 850,
+      "power": 120
+    },
+    "A": {
+      "reserve": 1650,
+      "power": 220
+    },
+    "S": {
+      "reserve": 3250,
+      "power": 380
+    }
+  }
+}

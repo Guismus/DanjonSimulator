@@ -1,8 +1,10 @@
 #include "../back/core/entity.hpp"
 #include "../back/systems/CombatSystem.hpp"
 #include "../back/core/simulator.hpp"
+#include "../back/data/DataStore.hpp"
 #include <cassert>
 #include <cmath>
+#include <print>
 
 void test_armor_blocking() {
     Entity attacker("Attacker");
@@ -302,3 +304,297 @@ void test_advanced_wear_and_magic() {
     assert(sim.getFighter1()->wounds.empty());
     assert(sim.getFighter1()->blood == 32.0f);
 }
+
+void test_eaux_maternelles() {
+    Simulator sim;
+    Entity mage("Mage");
+    Entity target("Target");
+
+    mage.stade = 1;
+    target.stade = 1;
+    mage.vitesse = 20.0f;
+    target.vitesse = 10.0f;
+    mage.magicReserve = 30.0f;
+    mage.forceMagique = 15.0f;
+    mage.magicType = "Eaux maternelles";
+    mage.blood = 15.0f;
+    mage.maxPhysicalReserve = 100.0f;
+    mage.physicalReserve = 100.0f;
+
+    target.maxPhysicalReserve = 100.0f;
+    target.physicalReserve = 100.0f;
+    target.vitesse = 10.0f;
+
+    // Apply a wound to Mage so we can test the extreme heal
+    mage.applyWound(3, DamageType::Tranchant);
+    assert(mage.wounds.size() == 1);
+    assert(mage.blood == 15.0f);
+
+    // Start combat - P1 (Mage) vs P2 (Target)
+    sim.startCombat(mage, target, ControlMode::Manual, ControlMode::Manual);
+
+    // Turn 1:
+    // Mage casts Eaux maternelles (Magic)
+    // Mage also attempts to Attack (to test that subsequent actions in the same turn are skipped once the bubble is up)
+    sim.addActionP1(ActionType::Magic);
+    sim.addActionP1(ActionType::Attack);
+
+    // Target attacks Mage
+    sim.addActionP2(ActionType::Attack);
+
+    sim.setP1Finished(true);
+    sim.setP2Finished(true);
+
+    assert(sim.checkResolve());
+    Simulator::TurnResult res1 = sim.resolveTurn();
+
+    // Verify Mage:
+    // 1. Extreme healing has occurred: wounds empty, blood restored to 32.0f
+    assert(sim.getFighter1()->wounds.empty());
+    assert(sim.getFighter1()->blood == 32.0f);
+    // 2. Magic cost was paid (30.0f - 25.0f = 5.0f)
+    assert(sim.getFighter1()->magicReserve == 5.0f);
+    // 3. Bubble is active. After turn end decrement, it should be 1 (started at 2 during action, then decremented by 1 at turn end)
+    assert(sim.getFighter1()->invulnerableTurnsLeft == 1);
+
+    // Verify Target:
+    // 1. Target's attack against Mage was blocked by bubble (logged as "glisse sur sa protection d'invulnérabilité")
+    bool bubbleBlockedLogFound = false;
+    bool actionSkippedLogFound = false;
+    for (const auto& log : res1.logs) {
+        if (log.find("glisse sur sa protection") != std::string::npos) {
+            bubbleBlockedLogFound = true;
+        }
+        if (log.find("Incapacité (Invulnérabilité active") != std::string::npos) {
+            actionSkippedLogFound = true;
+        }
+    }
+    assert(bubbleBlockedLogFound);
+    assert(actionSkippedLogFound);
+
+    // Turn 2: Mage's bubble is at 1.
+    // Let's queue an action for Mage (even though UI disables it, the backend should block/skip it if queued)
+    // and an attack for Target
+    sim.addActionP1(ActionType::Attack);
+    sim.addActionP2(ActionType::Attack);
+    sim.setP1Finished(true);
+    sim.setP2Finished(true);
+
+    Simulator::TurnResult res2 = sim.resolveTurn();
+
+    // Verify that during Turn 2:
+    // 1. Mage's action was skipped again
+    // 2. Target's attack was blocked again
+    // 3. At the end of Turn 2, bubble expires (bubbleTurnsLeft becomes 0)
+    assert(sim.getFighter1()->invulnerableTurnsLeft == 0);
+
+    bool res2BlockedFound = false;
+    bool res2SkippedFound = false;
+    for (const auto& log : res2.logs) {
+        if (log.find("glisse sur sa protection") != std::string::npos) {
+            res2BlockedFound = true;
+        }
+        if (log.find("Incapacité (Invulnérabilité active") != std::string::npos) {
+            res2SkippedFound = true;
+        }
+    }
+    assert(res2BlockedFound);
+    assert(res2SkippedFound);
+
+    // Turn 3: Bubble is now 0.
+    // Mage can attack, and Target can attack normally
+    sim.addActionP1(ActionType::Attack);
+    sim.addActionP2(ActionType::Attack);
+    sim.setP1Finished(true);
+    sim.setP2Finished(true);
+
+    Simulator::TurnResult res3 = sim.resolveTurn();
+    
+    // Bubble is still 0
+    assert(sim.getFighter1()->invulnerableTurnsLeft == 0);
+
+    // Verify that actions were NOT skipped or blocked by bubble
+    for (const auto& log : res3.logs) {
+        assert(log.find("glisse sur sa protection") == std::string::npos);
+        assert(log.find("Incapacité (Invulnérabilité active") == std::string::npos);
+    }
+}
+
+void test_magic_catalyst_selection() {
+    Simulator sim;
+    Entity fighter("Fighter");
+    Entity target("Target");
+
+    fighter.stade = 1;
+    target.stade = 1;
+    fighter.vitesse = 10.0f;
+    target.vitesse = 10.0f;
+    fighter.maxPhysicalReserve = 100.0f;
+    fighter.physicalReserve = 100.0f;
+    target.maxPhysicalReserve = 100.0f;
+    target.physicalReserve = 100.0f;
+
+    // Fighter has base magic: Eaux maternelles (30 mana)
+    fighter.magicType = "Eaux maternelles";
+    fighter.magicReserve = 30.0f;
+    fighter.blood = 15.0f;
+
+    // Fighter has catalyst: Boost (100 reserve)
+    Catalyst cat;
+    cat.magicType = "Boost";
+    cat.reserve = 100;
+    cat.power = 10;
+    fighter.catalyst = cat;
+    fighter.catalysts.push_back(cat);
+
+    sim.startCombat(fighter, target, ControlMode::Manual, ControlMode::Manual);
+
+    // 1. Cast catalyst spell (Boost)
+    // We queue: magicType = "Boost", useCatalyst = true
+    sim.addActionP1(ActionType::Magic, "Boost", true);
+    sim.setP1Finished(true);
+    sim.setP2Finished(true);
+    auto res1 = sim.resolveTurn();
+
+
+    // Verify catalyst reserve decreased (100 - 10 = 90)
+    assert(sim.getFighter1()->catalyst.has_value());
+    assert(sim.getFighter1()->catalyst->reserve == 90);
+    // Base magicReserve remains untouched (30.0f)
+    assert(sim.getFighter1()->magicReserve == 30.0f);
+    // Wounds/blood remains untouched (not healed by Boost)
+    assert(sim.getFighter1()->blood == 15.0f);
+
+    // 2. Cast base spell (Eaux maternelles, cost 25)
+    // We queue: magicType = "Eaux maternelles", useCatalyst = false
+    sim.addActionP1(ActionType::Magic, "Eaux maternelles", false);
+    sim.setP1Finished(true);
+    sim.setP2Finished(true);
+    sim.resolveTurn();
+
+    // Verify base magic reserve decreased (30 - 25 = 5)
+    assert(sim.getFighter1()->magicReserve == 5.0f);
+    // Catalyst reserve remains untouched (90)
+    assert(sim.getFighter1()->catalyst->reserve == 90);
+    // Blood restored to 32.0f by Eaux maternelles
+    assert(sim.getFighter1()->blood == 32.0f);
+    // Invulnerability turns left should be 1 (started at 2, decremented at turn end)
+    assert(sim.getFighter1()->invulnerableTurnsLeft == 1);
+}
+
+void test_bal_des_lucioles() {
+    assert(DataStore::getInstance().loadCatalysts("data/catalysts.json"));
+    assert(DataStore::getInstance().loadEntities("data/entities"));
+    
+    auto agathaOpt = DataStore::getInstance().getEntityTemplate("Agatha Eterm");
+    assert(agathaOpt.has_value());
+    Entity agatha = *agathaOpt;
+    assert(agatha.magicType == "Bal des lucioles");
+    assert(agatha.magicReserve == 150.0f);
+    
+    Simulator sim;
+    Entity target("Target");
+    target.stade = agatha.stade;
+    target.resistanceMagique = 10.0f;
+    target.resistance = 10.0f;
+    target.maxPhysicalReserve = 100.0f;
+    target.physicalReserve = 100.0f;
+    
+    agatha.maxPhysicalReserve = 100.0f;
+    agatha.physicalReserve = 100.0f;
+    
+    agatha.applyWound(2, DamageType::Contondant);
+    assert(agatha.wounds.size() == 1);
+    
+    sim.startCombat(agatha, target, ControlMode::Manual, ControlMode::Manual);
+    
+    sim.addActionP1(ActionType::Magic, "Bal des lucioles", false);
+    sim.addActionP1(ActionType::Attack);
+    
+    sim.setP1Finished(true);
+    sim.setP2Finished(true);
+    sim.resolveTurn();
+    
+    assert(sim.getFighter1()->magicReserve == 135.0f);
+    
+    bool targetHasFireWound = false;
+    for (const auto& w : sim.getFighter2()->wounds) {
+        if (w.damageType == DamageType::Feu) {
+            targetHasFireWound = true;
+        }
+    }
+    assert(targetHasFireWound);
+    assert(sim.getFighter1()->wounds.empty());
+    assert(!sim.getFighter1()->balDesLuciolesActive);
+}
+
+void test_generic_duration_heal_and_boost() {
+    // Test continuous healing
+    Entity tester("Tester");
+    tester.blood = 10.0f;
+    tester.applyWound(3, DamageType::Contondant);
+    
+    // Add active heal of Moyen power for 2 turns
+    ActiveEffect ae;
+    ae.type = "heal";
+    ae.duration = 2;
+    ae.power = "moyen";
+    ae.spellName = "Regen";
+    tester.activeEffects.push_back(ae);
+    
+    std::vector<std::string> logs;
+    // Tick 1
+    tester.updateActiveEffects(logs);
+    tester.decrementActiveEffects(logs);
+    
+    // Wound of 3 shouldn't be healed by Moyen (<= 2). Wound of 3 is still there.
+    assert(tester.wounds.size() == 1);
+    assert(tester.activeEffects.size() == 1); // duration becomes 1
+    
+    // Apply a wound of 1
+    tester.applyWound(1, DamageType::Contondant);
+    assert(tester.wounds.size() == 2);
+    
+    // Tick 2
+    tester.updateActiveEffects(logs);
+    tester.decrementActiveEffects(logs);
+    
+    // The wound of 1 should be healed by Moyen. Wound of 3 remains.
+    assert(tester.wounds.size() == 1);
+    assert(tester.wounds[0].effectiveness == 3);
+    assert(tester.activeEffects.empty()); // expired
+
+    // Test temporary boost
+    tester.force = 10.0f;
+    tester.vitesse = 10.0f;
+    
+    ActiveEffect aeBoost;
+    aeBoost.type = "boost";
+    aeBoost.duration = 2;
+    aeBoost.forceBoost = 5.0f;
+    aeBoost.speedBoost = 3.0f;
+    aeBoost.spellName = "TempBoost";
+    
+    tester.applyStatBoost(aeBoost.forceBoost, aeBoost.speedBoost);
+    tester.activeEffects.push_back(aeBoost);
+    
+    assert(tester.force == 15.0f);
+    assert(tester.vitesse == 13.0f);
+    
+    tester.updateActiveEffects(logs);
+    tester.decrementActiveEffects(logs);
+    
+    assert(tester.force == 15.0f);
+    assert(tester.vitesse == 13.0f);
+    assert(tester.activeEffects.size() == 1);
+    
+    tester.updateActiveEffects(logs);
+    tester.decrementActiveEffects(logs);
+    
+    // Boost reverted after duration expires
+    assert(tester.force == 10.0f);
+    assert(tester.vitesse == 10.0f);
+    assert(tester.activeEffects.empty());
+}
+
+

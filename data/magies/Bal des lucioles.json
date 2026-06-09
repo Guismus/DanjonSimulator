@@ -1,0 +1,16 @@
+{
+  "name": "Bal des lucioles",
+  "cost": 15.0,
+  "effects": [
+    {
+      "type": "heal",
+      "power": "moyen"
+    },
+    {
+      "type": "damage",
+      "nature": "magique",
+      "damage_type": "feu",
+      "multiplier": 0.9
+    }
+  ]
+}

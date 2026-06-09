@@ -7,5 +7,11 @@
     "forceMagique": 10,
     "resistanceMagique": 19,
     "rank": "E",
-    "characterClass": "FORGEMAITRE"
+    "characterClass": "FORGEMAITRE",
+    "catalyst": [
+        {
+            "magicType": "Eaux maternelles",
+            "rank": "F"
+        }
+    ]
 }

@@ -7,5 +7,7 @@
     "forceMagique": 17.75,
     "resistanceMagique": 19.25,
     "rank": "E",
-    "physicalDamageType": "Neutre"
+    "physicalDamageType": "Neutre",
+    "magicType": "Bal des lucioles",
+    "isMonster": false
 }

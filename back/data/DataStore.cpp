@@ -67,6 +67,81 @@ bool DataStore::loadEnergySystem(std::string_view filepath) {
     }
 }
 
+bool DataStore::loadCatalysts(std::string_view filepath) {
+    std::ifstream file{std::filesystem::path(filepath)};
+    if (!file.is_open()) return false;
+    try {
+        json j;
+        file >> j;
+        if (j.contains("ranks")) {
+            for (auto it = j["ranks"].begin(); it != j["ranks"].end(); ++it) {
+                std::string rankName = it.key();
+                auto val = it.value();
+                CatalystTemplate t;
+                t.reserve = val.value("reserve", 0);
+                t.power = val.value("power", 0);
+                catalystTemplates[rankName] = t;
+            }
+        }
+        return true;
+    } catch (std::exception& e) {
+        std::println(stderr, "Failed to parse catalysts: {}", e.what());
+        return false;
+    }
+}
+
+std::optional<CatalystTemplate> DataStore::getCatalystTemplate(const std::string& rank) const {
+    auto it = catalystTemplates.find(rank);
+    if (it != catalystTemplates.end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+bool DataStore::loadSpells(std::string_view directoryPath) {
+    fs::path dir{directoryPath};
+    if (!fs::exists(dir)) {
+        std::println(stderr, "Spells directory does not exist: {}", directoryPath);
+        return false;
+    }
+    bool success = true;
+    for (const auto& entry : fs::directory_iterator(dir)) {
+        if (entry.path().extension() == ".json") {
+            std::ifstream file(entry.path());
+            if (!file.is_open()) {
+                std::println(stderr, "Failed to open spell file: {}", entry.path().string());
+                success = false;
+                continue;
+            }
+            try {
+                json j;
+                file >> j;
+                
+                Spell spell;
+                spell.name = j.value("name", "Unknown");
+                spell.cost = j.value("cost", 10.0f);
+                if (j.contains("effects") && j["effects"].is_array()) {
+                    spell.effects = j["effects"];
+                }
+                
+                magicSpells[spell.name] = spell;
+            } catch (json::parse_error& e) {
+                std::println(stderr, "JSON parse error in spell {}: {}", entry.path().string(), e.what());
+                success = false;
+            }
+        }
+    }
+    return success;
+}
+
+std::optional<Spell> DataStore::getSpell(std::string_view name) const {
+    auto it = magicSpells.find(name);
+    if (it != magicSpells.end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
 const EnergyThresholds* DataStore::getEnergyThresholds(int rank) const {
     auto it = rankThresholds.find(rank);
     if (it != rankThresholds.end()) return &it->second;
@@ -215,17 +290,58 @@ bool DataStore::loadEntities(std::string_view directoryPath) {
                 entity.fireDamageResistanceBonus = j.value("fireDamageResistanceBonus", entity.fireDamageResistanceBonus);
 
                 entity.magicType = j.value("magicType", j.value("magic_type", "Offensive"));
-                entity.magicReserve = j.value("magicReserve", j.value("magic_reserve", 0.0f));
+                float defaultMagicReserve = 0.0f;
+                if (entity.magicType != "Offensive" && !entity.magicType.empty()) {
+                    std::string rStr = "F";
+                    if (entity.rank == 0) rStr = "None";
+                    else if (entity.rank == 1) rStr = "F";
+                    else if (entity.rank == 2) rStr = "E";
+                    else if (entity.rank == 3) rStr = "D";
+                    else if (entity.rank == 4) rStr = "C";
+                    else if (entity.rank == 5) rStr = "B";
+                    else if (entity.rank == 6) rStr = "A";
+                    else if (entity.rank == 7) rStr = "S";
+                    
+                    auto tempOpt = getCatalystTemplate(rStr);
+                    if (tempOpt) {
+                        defaultMagicReserve = static_cast<float>(tempOpt->reserve);
+                    }
+                }
+                entity.magicReserve = j.value("magicReserve", j.value("magic_reserve", defaultMagicReserve));
 
-                if (j.contains("catalyst") && j["catalyst"].is_object()) {
-                    auto catJ = j["catalyst"];
-                    Catalyst cat;
-                    cat.magicType = catJ.value("magicType", catJ.value("magic_type", "Offensive"));
-                    cat.reserve = catJ.value("reserve", catJ.value("magicReserve", catJ.value("magic_reserve", 0)));
-                    cat.power = catJ.value("power", catJ.value("force_magique", catJ.value("forceMagique", 0)));
-                    entity.catalyst = cat;
-                    if (!j.contains("magicReserve") && !j.contains("magic_reserve")) {
-                        entity.magicReserve = static_cast<float>(cat.reserve);
+                if (j.contains("catalyst")) {
+                    auto parseCatalystJson = [this](const json& catJ) {
+                        Catalyst cat;
+                        cat.magicType = catJ.value("magicType", catJ.value("magic_type", "Offensive"));
+                        
+                        int defaultReserve = 0;
+                        int defaultPower = 0;
+                        if (catJ.contains("rank") && catJ["rank"].is_string()) {
+                            std::string catRank = catJ["rank"].get<std::string>();
+                            auto tempOpt = getCatalystTemplate(catRank);
+                            if (tempOpt) {
+                                defaultReserve = tempOpt->reserve;
+                                defaultPower = tempOpt->power;
+                            }
+                        }
+                        
+                        cat.reserve = catJ.value("reserve", catJ.value("magicReserve", catJ.value("magic_reserve", defaultReserve)));
+                        cat.power = catJ.value("power", catJ.value("force_magique", catJ.value("forceMagique", defaultPower)));
+                        return cat;
+                    };
+
+                    if (j["catalyst"].is_array()) {
+                        for (const auto& catJ : j["catalyst"]) {
+                            entity.catalysts.push_back(parseCatalystJson(catJ));
+                        }
+                    } else if (j["catalyst"].is_object()) {
+                        entity.catalysts.push_back(parseCatalystJson(j["catalyst"]));
+                    }
+                    if (!entity.catalysts.empty()) {
+                        entity.catalyst = entity.catalysts[0];
+                        if (!j.contains("magicReserve") && !j.contains("magic_reserve")) {
+                            entity.magicReserve = static_cast<float>(entity.catalyst->reserve);
+                        }
                     }
                 }
 

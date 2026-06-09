@@ -1,0 +1,15 @@
+{
+  "name": "Eaux maternelles",
+  "cost": 25.0,
+  "effects": [
+    {
+      "type": "invulnerability",
+      "duration": "2 turn"
+    },
+    {
+      "type": "heal",
+      "duration": "2 turn",
+      "power": "extreme"
+    }
+  ]
+}

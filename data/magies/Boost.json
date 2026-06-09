@@ -1,0 +1,11 @@
+{
+  "name": "Boost",
+  "cost": 10.0,
+  "effects": [
+    {
+      "type": "boost",
+      "force": 5.0,
+      "vitesse": 5.0
+    }
+  ]
+}
